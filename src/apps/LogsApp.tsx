@@ -122,7 +122,7 @@ export default function LogsApp({
         </div>
         <div className="streams-list">
           {streams.length === 0 ? (
-            <p className="note" style={{ padding: "8px 12px" }}>No name matches.</p>
+            <p className="note streams-empty">No name matches.</p>
           ) : streams.map((container) => {
             const health = containerHealth(container);
             return (
@@ -193,13 +193,13 @@ export default function LogsApp({
           </button>
         )}
 
-        <footer className="log-foot">
+        <footer className="foot">
           <span>{lines.length} buffered</span>
           {needle.trim() && <span>{shown.length} matching</span>}
           <span className="legend">
-            <span><i style={{ background: "var(--lamp-fail)" }} /> error</span>
-            <span><i style={{ background: "var(--lamp-warn)" }} /> warn</span>
-            <span><i style={{ background: "var(--rule-hi)" }} /> info</span>
+            <span><i className="error" /> error</span>
+            <span><i className="warn" /> warn</span>
+            <span><i /> info</span>
           </span>
         </footer>
       </section>
