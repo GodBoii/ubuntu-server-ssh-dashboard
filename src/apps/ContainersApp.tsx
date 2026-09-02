@@ -148,13 +148,18 @@ export default function ContainersApp({
                 const running = container.state === "running";
                 const picked = selected === container.name;
                 return (
-                  <tr
-                    key={container.id}
-                    aria-selected={picked}
-                    onClick={() => onSelect(picked ? null : container.name)}
-                  >
+                  <tr key={container.id} aria-selected={picked}>
                     <td><State level={health === "connecting" ? "live" : health === "healthy" ? "ok" : health === "degraded" ? "warn" : "fail"}>{containerStatusLabel(container)}</State></td>
-                    <td className="name">{container.name}</td>
+                    <td className="name">
+                      <button
+                        type="button"
+                        className="cell-btn"
+                        aria-expanded={picked}
+                        onClick={() => onSelect(picked ? null : container.name)}
+                      >
+                        {container.name}
+                      </button>
+                    </td>
                     <td className="dim">{container.project ?? "—"}{container.service ? ` / ${container.service}` : ""}</td>
                     <td className="dim" title={container.image}>{container.image}</td>
                     <td className="dim" title={container.ports || "no published ports"}>{container.ports || "—"}</td>
@@ -180,7 +185,7 @@ export default function ContainersApp({
         )}
       </div>
 
-      <footer className="log-foot">
+      <footer className="foot">
         <span>{rows.length} of {containers.length} shown</span>
         <span className="legend">
           <span><Lamp level="ok" /> healthy</span>
