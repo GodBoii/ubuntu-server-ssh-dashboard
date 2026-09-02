@@ -578,14 +578,13 @@
 
 /* The replacement for cards: a two-column definition list on hairline rows. */
 .spec {
-  display: grid;
-  grid-template-columns: minmax(90px, auto) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
 }
 
 .spec > div {
   display: grid;
-  grid-template-columns: subgrid;
-  grid-column: 1 / -1;
+  grid-template-columns: 92px minmax(0, 1fr);
   align-items: baseline;
   gap: var(--s3);
   padding: 7px 0;
