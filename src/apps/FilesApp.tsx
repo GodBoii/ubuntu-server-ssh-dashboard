@@ -1,6 +1,5 @@
 import {
   ChevronLeft,
-  ChevronRight,
   File,
   FileCode2,
   FileJson,
@@ -11,83 +10,83 @@ import {
   Save,
   Search,
   Settings2,
-  TriangleAlert,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "../api";
-import { Button, EmptyState, IconButton, LoadingState, SearchField } from "../components/primitives";
+import { Act, Btn, Busy, Empty, Field } from "../components/kit";
 import { formatBytes, formatTimestamp } from "../lib/format";
 import type { DirectoryListing, FileEntry } from "../types";
 
-const rootPath = "/home/arun/apps";
-const folderNamePattern = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const root = "/home/arun/apps";
+const nameRule = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 
-type Browser =
+type Tree =
   | { kind: "loading"; path: string }
   | { kind: "ready"; listing: DirectoryListing }
   | { kind: "failed"; path: string; message: string };
 
 type Editor =
-  | { kind: "empty" }
+  | { kind: "idle" }
   | { kind: "loading"; entry: FileEntry }
   | { kind: "ready"; entry: FileEntry; original: string; draft: string; modified: number }
   | { kind: "failed"; entry: FileEntry; message: string };
 
-type Pending = { kind: "directory"; path: string } | { kind: "file"; entry: FileEntry };
+type Target = { kind: "directory"; path: string } | { kind: "file"; entry: FileEntry };
 
 function describe(error: unknown): string {
   if (error instanceof ApiError) return error.message;
-  return error instanceof Error ? error.message : "The controller could not reach that path";
+  return error instanceof Error ? error.message : "the controller could not reach that path";
 }
 
-function iconFor(entry: FileEntry): ReactNode {
-  if (entry.kind === "directory") return <Folder size={16} />;
-  const extension = entry.name.includes(".") ? entry.name.split(".").pop()?.toLowerCase() ?? "" : "";
-  if (["json", "lock"].includes(extension)) return <FileJson size={16} />;
-  if (["yml", "yaml", "toml", "ini", "conf", "cfg", "env"].includes(extension)) return <Settings2 size={16} />;
-  if (["py", "ts", "tsx", "js", "jsx", "sh", "go", "rs", "sql"].includes(extension)) return <FileCode2 size={16} />;
-  if (["md", "txt", "log"].includes(extension)) return <FileText size={16} />;
-  return <File size={16} />;
+function glyph(entry: FileEntry): ReactNode {
+  if (entry.kind === "directory") return <Folder size={13} />;
+  const extension = entry.name.split(".").pop()?.toLowerCase() ?? "";
+  if (["json", "lock"].includes(extension)) return <FileJson size={13} />;
+  if (["yml", "yaml", "toml", "ini", "conf", "cfg", "env"].includes(extension)) return <Settings2 size={13} />;
+  if (["py", "ts", "tsx", "js", "jsx", "sh", "go", "rs", "sql"].includes(extension)) return <FileCode2 size={13} />;
+  if (["md", "txt", "log"].includes(extension)) return <FileText size={13} />;
+  return <File size={13} />;
 }
 
-function crumbsFor(path: string): Array<{ label: string; path: string }> {
-  const crumbs = [{ label: "apps", path: rootPath }];
-  if (!path.startsWith(rootPath) || path === rootPath) return crumbs;
-  let walked = rootPath;
-  for (const segment of path.slice(rootPath.length).split("/").filter(Boolean)) {
+function crumbs(path: string): Array<{ label: string; path: string }> {
+  const trail = [{ label: "apps", path: root }];
+  if (!path.startsWith(root) || path === root) return trail;
+  let walked = root;
+  for (const segment of path.slice(root.length).split("/").filter(Boolean)) {
     walked = `${walked}/${segment}`;
-    crumbs.push({ label: segment, path: walked });
+    trail.push({ label: segment, path: walked });
   }
-  return crumbs;
+  return trail;
 }
 
 export default function FilesApp({ notify }: { notify: (message: string, tone?: "success" | "error" | "info") => void }) {
-  const [browser, setBrowser] = useState<Browser>({ kind: "loading", path: rootPath });
-  const [editor, setEditor] = useState<Editor>({ kind: "empty" });
+  const [tree, setTree] = useState<Tree>({ kind: "loading", path: root });
+  const [editor, setEditor] = useState<Editor>({ kind: "idle" });
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
-  const [folderName, setFolderName] = useState("");
+  const [folder, setFolder] = useState("");
   const [saving, setSaving] = useState(false);
-  const [pending, setPending] = useState<Pending | null>(null);
+  const [pending, setPending] = useState<Target | null>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const dirty = editor.kind === "ready" && editor.draft !== editor.original;
 
-  const loadDirectory = useCallback(async (path: string) => {
-    setBrowser({ kind: "loading", path });
+  const load = useCallback(async (path: string) => {
+    setTree({ kind: "loading", path });
     try {
       const listing = await api.files(path);
-      setBrowser({ kind: "ready", listing });
-      setEditor({ kind: "empty" });
+      setTree({ kind: "ready", listing });
+      setEditor({ kind: "idle" });
       setQuery("");
     } catch (error) {
-      setBrowser({ kind: "failed", path, message: describe(error) });
+      setTree({ kind: "failed", path, message: describe(error) });
     }
   }, []);
 
-  useEffect(() => { void loadDirectory(rootPath); }, [loadDirectory]);
+  useEffect(() => { void load(root); }, [load]);
 
-  const openFile = useCallback(async (entry: FileEntry) => {
+  const open = useCallback(async (entry: FileEntry) => {
     setEditor({ kind: "loading", entry });
     try {
       const file = await api.file(entry.path);
@@ -97,21 +96,21 @@ export default function FilesApp({ notify }: { notify: (message: string, tone?: 
     }
   }, []);
 
-  const navigate = (target: Pending) => {
+  const go = (target: Target) => {
     if (dirty) {
       setPending(target);
       return;
     }
-    if (target.kind === "directory") void loadDirectory(target.path);
-    else void openFile(target.entry);
+    if (target.kind === "directory") void load(target.path);
+    else void open(target.entry);
   };
 
-  const resolvePending = (choice: "discard" | "stay") => {
+  const settle = (choice: "leave" | "stay") => {
     const target = pending;
     setPending(null);
     if (choice === "stay" || !target) return;
-    if (target.kind === "directory") void loadDirectory(target.path);
-    else void openFile(target.entry);
+    if (target.kind === "directory") void load(target.path);
+    else void open(target.entry);
   };
 
   const save = useCallback(async () => {
@@ -146,206 +145,188 @@ export default function FilesApp({ notify }: { notify: (message: string, tone?: 
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const createFolder = async () => {
-    if (browser.kind !== "ready") return;
-    const name = folderName.trim();
-    if (!folderNamePattern.test(name)) {
-      notify("Folder names may use letters, numbers, dot, dash and underscore", "error");
+  const create = async () => {
+    if (tree.kind !== "ready") return;
+    const name = folder.trim();
+    if (!nameRule.test(name)) {
+      notify("letters, numbers, dot, dash and underscore only", "error");
       return;
     }
     try {
-      await api.createDirectory(`${browser.listing.path}/${name}`);
+      await api.createDirectory(`${tree.listing.path}/${name}`);
       setCreating(false);
-      setFolderName("");
-      notify(`Created ${name}`);
-      await loadDirectory(browser.listing.path);
+      setFolder("");
+      notify(`created ${name}`);
+      await load(tree.listing.path);
     } catch (error) {
       notify(describe(error), "error");
     }
   };
 
   const entries = useMemo(() => {
-    if (browser.kind !== "ready") return [];
+    if (tree.kind !== "ready") return [];
     const needle = query.trim().toLowerCase();
-    return needle ? browser.listing.entries.filter((entry) => entry.name.toLowerCase().includes(needle)) : browser.listing.entries;
-  }, [browser, query]);
+    return needle ? tree.listing.entries.filter((entry) => entry.name.toLowerCase().includes(needle)) : tree.listing.entries;
+  }, [query, tree]);
 
-  const currentPath = browser.kind === "ready" ? browser.listing.path : browser.path;
-  const parent = browser.kind === "ready" ? browser.listing.parent : null;
-  const selectedPath = editor.kind === "empty" ? null : editor.entry.path;
+  const path = tree.kind === "ready" ? tree.listing.path : tree.path;
+  const parent = tree.kind === "ready" ? tree.listing.parent : null;
+  const picked = editor.kind === "idle" ? null : editor.entry.path;
+  const lineCount = editor.kind === "ready" ? editor.draft.split("\n").length : 0;
 
-  const moveFocus = (direction: 1 | -1) => {
-    const buttons = [...(listRef.current?.querySelectorAll<HTMLButtonElement>(".file-row") ?? [])];
-    const index = buttons.findIndex((button) => button === document.activeElement);
-    const next = buttons[Math.min(Math.max(index + direction, 0), buttons.length - 1)];
-    next?.focus();
+  const moveFocus = (step: 1 | -1) => {
+    const rows = [...(listRef.current?.querySelectorAll<HTMLButtonElement>(".entry") ?? [])];
+    const index = rows.findIndex((row) => row === document.activeElement);
+    rows[Math.min(Math.max(index + step, 0), rows.length - 1)]?.focus();
   };
 
   return (
-    <div className={`files-layout${selectedPath ? " has-selection" : ""}`}>
-      <section className="file-browser" aria-label="Application files">
-        <header className="file-toolbar">
-          <IconButton
-            label="Parent directory"
-            icon={<ChevronLeft size={16} />}
-            disabled={!parent}
-            onClick={() => parent && navigate({ kind: "directory", path: parent })}
-          />
-          <nav className="breadcrumbs" aria-label="Current path">
-            {crumbsFor(currentPath).map((crumb, index, all) => (
+    <div className={`files${picked ? " picked" : ""}`}>
+      <section className="tree" aria-label="Application files">
+        <header className="tree-head">
+          <Act label="Parent directory" icon={<ChevronLeft size={13} />} disabled={!parent} onClick={() => parent && go({ kind: "directory", path: parent })} />
+          <nav className="crumbs" aria-label="Current path">
+            {crumbs(path).map((crumb, index, all) => (
               <span key={crumb.path}>
-                {index > 0 && <ChevronRight size={12} aria-hidden="true" />}
-                {index === all.length - 1 ? (
-                  <b aria-current="page">{crumb.label}</b>
-                ) : (
-                  <button type="button" onClick={() => navigate({ kind: "directory", path: crumb.path })}>{crumb.label}</button>
-                )}
+                {index > 0 && <i aria-hidden="true">/</i>}
+                {index === all.length - 1
+                  ? <b aria-current="page">{crumb.label}</b>
+                  : <button type="button" onClick={() => go({ kind: "directory", path: crumb.path })}>{crumb.label}</button>}
               </span>
             ))}
           </nav>
-          <IconButton
-            label="New folder"
-            icon={<FolderPlus size={16} />}
-            active={creating}
-            disabled={browser.kind !== "ready"}
-            onClick={() => setCreating((value) => !value)}
-          />
+          <Act label="New folder" icon={<FolderPlus size={13} />} pressed={creating} disabled={tree.kind !== "ready"} onClick={() => setCreating((value) => !value)} />
         </header>
 
-        <div className="file-filter">
-          <SearchField value={query} onChange={setQuery} label="Filter this directory" placeholder="Filter files" icon={<Search size={14} />} />
+        <div className="tree-filter">
+          <Field value={query} onChange={setQuery} label="Filter this directory" placeholder="filter" icon={<Search size={12} />} width="sm" />
         </div>
 
         {creating && (
-          <form
-            className="inline-create"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void createFolder();
-            }}
-          >
+          <form className="tree-new" onSubmit={(event) => { event.preventDefault(); void create(); }}>
             <label className="sr-only" htmlFor="new-folder">Folder name</label>
             <input
               id="new-folder"
               autoFocus
-              value={folderName}
+              value={folder}
               placeholder="new-folder"
               spellCheck={false}
-              onChange={(event) => setFolderName(event.target.value)}
+              onChange={(event) => setFolder(event.target.value)}
               onKeyDown={(event) => event.key === "Escape" && setCreating(false)}
             />
-            <Button variant="primary" size="compact" type="submit" disabled={!folderName.trim()}>Create</Button>
-            <Button variant="ghost" size="compact" onClick={() => { setCreating(false); setFolderName(""); }}>Cancel</Button>
+            <Btn variant="primary" type="submit" disabled={!folder.trim()}>Create</Btn>
           </form>
         )}
 
-        <div className="file-list" ref={listRef} onKeyDown={(event) => {
-          if (event.key === "ArrowDown") { event.preventDefault(); moveFocus(1); }
-          if (event.key === "ArrowUp") { event.preventDefault(); moveFocus(-1); }
-        }}>
-          {browser.kind === "loading" && <LoadingState label="Reading the remote directory" />}
-          {browser.kind === "failed" && (
-            <EmptyState
-              icon={<TriangleAlert size={20} />}
-              title="Could not read this directory"
-              detail={browser.message}
-              action={<Button variant="secondary" size="compact" onClick={() => void loadDirectory(browser.path)}>Try again</Button>}
+        <div
+          className="tree-list"
+          ref={listRef}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown") { event.preventDefault(); moveFocus(1); }
+            if (event.key === "ArrowUp") { event.preventDefault(); moveFocus(-1); }
+          }}
+        >
+          {tree.kind === "loading" && <Busy label="reading directory" />}
+          {tree.kind === "failed" && (
+            <Empty title="cannot read" note={tree.message} action={<Btn variant="line" onClick={() => void load(tree.path)}>Retry</Btn>} />
+          )}
+          {tree.kind === "ready" && entries.length === 0 && (
+            <Empty
+              title={query.trim() ? "no match" : "empty"}
+              note={query.trim() ? `Nothing here contains "${query.trim()}".` : "This folder has no files or subfolders."}
             />
           )}
-          {browser.kind === "ready" && entries.length === 0 && (
-            <EmptyState
-              icon={<Folder size={20} />}
-              title={query.trim() ? "Nothing matches that filter" : "Empty directory"}
-              detail={query.trim() ? `No entry in this folder contains "${query.trim()}".` : "This folder has no files or subfolders yet."}
-            />
-          )}
-          {browser.kind === "ready" && entries.map((entry) => (
+          {tree.kind === "ready" && entries.map((entry) => (
             <button
               key={entry.path}
               type="button"
-              className={`file-row${selectedPath === entry.path ? " is-selected" : ""}`}
-              onClick={() => navigate(entry.kind === "directory" ? { kind: "directory", path: entry.path } : { kind: "file", entry })}
+              className="entry"
+              aria-current={picked === entry.path ? "true" : undefined}
+              onClick={() => go(entry.kind === "directory" ? { kind: "directory", path: entry.path } : { kind: "file", entry })}
             >
-              <span className="file-icon" aria-hidden="true">{iconFor(entry)}</span>
-              <span className="file-name">
-                <strong>{entry.name}</strong>
-                <small>{entry.kind === "directory" ? "folder" : formatBytes(entry.size)}</small>
-              </span>
-              <time dateTime={new Date(entry.modified).toISOString()}>{formatTimestamp(entry.modified)}</time>
+              {glyph(entry)}
+              <b>{entry.name}</b>
+              <span>{entry.kind === "directory" ? "dir" : formatBytes(entry.size)}</span>
             </button>
           ))}
         </div>
       </section>
 
-      <section className="file-editor" aria-label="File editor">
-        {editor.kind === "empty" && (
-          <EmptyState
-            icon={<FileCode2 size={22} />}
-            title="Pick a text file"
-            detail="Files inside /home/arun/apps up to 2 MB open here. Save writes atomically and keeps the original permissions."
+      <section className="pane" aria-label="File editor">
+        {editor.kind === "idle" && (
+          <Empty
+            title="pick a text file"
+            note="Files under /home/arun/apps up to 2 MB open here. Saving writes atomically through a temp file and keeps the original permissions."
           />
         )}
 
-        {editor.kind === "loading" && <LoadingState label={`Opening ${editor.entry.name}`} />}
+        {editor.kind === "loading" && <Busy label={`opening ${editor.entry.name}`} />}
 
         {editor.kind === "failed" && (
-          <EmptyState
-            icon={<TriangleAlert size={22} />}
-            title={`Could not open ${editor.entry.name}`}
-            detail={editor.message}
-            action={<Button variant="secondary" size="compact" onClick={() => void openFile(editor.entry)}>Try again</Button>}
+          <Empty
+            title={`cannot open ${editor.entry.name}`}
+            note={editor.message}
+            action={<Btn variant="line" onClick={() => void open(editor.entry)}>Retry</Btn>}
           />
         )}
 
         {editor.kind === "ready" && (
           <>
-            <header className="editor-head">
-              <div className="editor-identity">
-                <IconButton label="Back to the file list" icon={<ChevronLeft size={16} />} onClick={() => setEditor({ kind: "empty" })} />
-                <span className="editor-icon" aria-hidden="true">{iconFor(editor.entry)}</span>
-                <span className="editor-name">
-                  <strong>{editor.entry.name}</strong>
-                  <small title={editor.entry.path}>{editor.entry.path}</small>
-                </span>
-                {dirty && <span className="pill warn">Unsaved</span>}
+            <header className="pane-head">
+              <div className="pane-id">
+                <Act label="Back to the file list" icon={<ChevronLeft size={13} />} onClick={() => setEditor({ kind: "idle" })} />
+                <b>{editor.entry.name}</b>
+                <span title={editor.entry.path}>{editor.entry.path}</span>
+                {dirty && <span className="dirty">modified</span>}
               </div>
-              <div className="row-actions">
-                <IconButton
-                  label="Discard your edits"
-                  icon={<RotateCcw size={15} />}
+              <div className="acts">
+                <Act
+                  label="Discard edits"
+                  icon={<RotateCcw size={13} />}
                   disabled={!dirty || saving}
                   onClick={() => setEditor({ ...editor, draft: editor.original })}
                 />
-                <Button variant="primary" size="compact" icon={<Save size={14} />} busy={saving} disabled={!dirty} onClick={() => void save()}>
-                  Save
-                </Button>
+                <Btn variant="primary" icon={<Save size={13} />} disabled={!dirty || saving} onClick={() => void save()}>
+                  {saving ? "Saving" : "Save"}
+                </Btn>
               </div>
             </header>
 
             {pending && (
-              <div className="editor-guard" role="alert">
-                <TriangleAlert size={15} aria-hidden="true" />
+              <div className="guard" role="alert">
                 <p>{editor.entry.name} has unsaved changes.</p>
-                <Button variant="primary" size="compact" onClick={() => void save().then(() => resolvePending("discard"))}>Save and continue</Button>
-                <Button variant="ghost" size="compact" onClick={() => resolvePending("discard")}>Discard</Button>
-                <Button variant="ghost" size="compact" onClick={() => resolvePending("stay")}>Keep editing</Button>
+                <Btn variant="primary" onClick={() => void save().then(() => settle("leave"))}>Save and go</Btn>
+                <Btn variant="quiet" onClick={() => settle("leave")}>Discard</Btn>
+                <Btn variant="quiet" onClick={() => settle("stay")}>Stay</Btn>
               </div>
             )}
 
-            <textarea
-              className="editor-surface"
-              aria-label={`Edit ${editor.entry.name}`}
-              spellCheck={false}
-              wrap="off"
-              value={editor.draft}
-              onChange={(event) => setEditor({ ...editor, draft: event.target.value })}
-            />
+            <div className="editor">
+              {/* Gutter scrolls by transform, driven by the textarea, so the two
+                  never disagree about which line is which. */}
+              <div className="editor-gutter" aria-hidden="true">
+                <div ref={gutterRef}>
+                  {Array.from({ length: lineCount }, (_, index) => <span key={index}>{index + 1}</span>)}
+                </div>
+              </div>
+              <textarea
+                aria-label={`Edit ${editor.entry.name}`}
+                spellCheck={false}
+                wrap="off"
+                value={editor.draft}
+                onChange={(event) => setEditor({ ...editor, draft: event.target.value })}
+                onScroll={(event) => {
+                  const node = gutterRef.current;
+                  if (node) node.style.transform = `translateY(${-event.currentTarget.scrollTop}px)`;
+                }}
+              />
+            </div>
 
-            <footer className="editor-footer">
-              <span>{editor.draft.split("\n").length} lines</span>
+            <footer className="pane-foot">
+              <span>{lineCount} lines</span>
               <span>{formatBytes(new TextEncoder().encode(editor.draft).length)}</span>
-              <span>Saved {formatTimestamp(editor.modified)}</span>
-              <span className="editor-hint"><kbd>Ctrl</kbd> + <kbd>S</kbd></span>
+              <span>saved {formatTimestamp(editor.modified)}</span>
+              <span className="push">ctrl+s</span>
             </footer>
           </>
         )}
