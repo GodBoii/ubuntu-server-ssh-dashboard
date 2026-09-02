@@ -1,37 +1,16 @@
-import {
-  Activity,
-  Boxes,
-  Command,
-  Copy,
-  FolderTree,
-  Gauge,
-  History,
-  Keyboard,
-  LayoutDashboard,
-  PanelRightClose,
-  PanelRightOpen,
-  Play,
-  Power,
-  RefreshCw,
-  RotateCw,
-  ScrollText,
-  ServerCog,
-  TerminalSquare,
-  TriangleAlert,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+import { Copy, Keyboard, RefreshCw, ScrollText, Search, TriangleAlert, X } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "./api";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette";
 import { ConfirmDialog, type ConfirmRequest } from "./components/ConfirmDialog";
-import { IconButton, LoadingState, Skeleton, Sparkline, StatusDot } from "./components/primitives";
+import { Act, Btn, Busy, Label, Lamp, Skeleton, Spec, State, useSlidingMarker } from "./components/kit";
 import { ShortcutsDialog, type ShortcutGroup } from "./components/ShortcutsDialog";
 import { Toasts } from "./components/Toasts";
+import { Trace } from "./components/Trace";
 import { useHostLink, type HostLink } from "./hooks/useHostLink";
 import { useToasts } from "./hooks/useToasts";
-import { formatClock, formatDay, formatLatency, formatRelativeTime } from "./lib/format";
-import { seriesOf, summarize } from "./lib/telemetry";
+import { formatBytes, formatClock, formatDuration, formatLatency, formatPercent, formatRelativeTime } from "./lib/format";
+import { containerHealth, containerStatusLabel, seriesOf, summarize } from "./lib/telemetry";
 import OverviewApp from "./apps/OverviewApp";
 import type { AppId, ContainerInfo, StackInfo } from "./types";
 
@@ -42,60 +21,49 @@ const LogsApp = lazy(() => import("./apps/LogsApp"));
 const ServicesApp = lazy(() => import("./apps/ServicesApp"));
 const TerminalApp = lazy(() => import("./apps/TerminalApp"));
 
-type Application = {
-  id: AppId;
-  label: string;
-  purpose: string;
-  icon: typeof Gauge;
-  shortcut: string;
-};
+type Entry = { id: AppId; name: string; purpose: string };
 
-const applications: Application[] = [
-  { id: "overview", label: "Overview", purpose: "Host metrics, stacks and busiest processes", icon: LayoutDashboard, shortcut: "1" },
-  { id: "containers", label: "Containers", purpose: "Inspect, start, stop and restart Docker workloads", icon: Boxes, shortcut: "2" },
-  { id: "logs", label: "Logs", purpose: "Follow live output from any container", icon: ScrollText, shortcut: "3" },
-  { id: "terminal", label: "Terminal", purpose: "Interactive shell on the Ubuntu host", icon: TerminalSquare, shortcut: "4" },
-  { id: "files", label: "Files", purpose: "Browse and edit files under /home/arun/apps", icon: FolderTree, shortcut: "5" },
-  { id: "services", label: "Services", purpose: "systemd boot state for ssh, docker and cloudflared", icon: ServerCog, shortcut: "6" },
-  { id: "activity", label: "Activity", purpose: "Local audit trail of management actions", icon: History, shortcut: "7" },
+/**
+ * The index is numbered rather than iconified: the number is also the Alt
+ * shortcut, so the ornament and the affordance are the same thing.
+ */
+const entries: Entry[] = [
+  { id: "overview", name: "Machine", purpose: "Vitals, compose stacks and busiest processes" },
+  { id: "containers", name: "Containers", purpose: "Inspect, start, stop and restart workloads" },
+  { id: "logs", name: "Logs", purpose: "Follow live output from any container" },
+  { id: "terminal", name: "Terminal", purpose: "Interactive shell on the Ubuntu host" },
+  { id: "files", name: "Files", purpose: "Browse and edit files under /home/arun/apps" },
+  { id: "services", name: "Services", purpose: "systemd state for ssh, docker and cloudflared" },
+  { id: "activity", name: "Activity", purpose: "Local ledger of every action taken here" },
 ];
+
+const numberOf = (id: AppId) => String(entries.findIndex((entry) => entry.id === id) + 1).padStart(2, "0");
 
 const shortcutGroups: ShortcutGroup[] = [
   {
-    name: "Navigation",
+    name: "Move",
     items: [
-      { keys: ["Ctrl", "K"], description: "Open the command palette" },
-      { keys: ["Alt", "1-7"], description: "Jump straight to an application" },
-      { keys: ["?"], description: "Show this sheet" },
-      { keys: ["Esc"], description: "Close whatever is on top" },
+      { keys: ["Ctrl", "K"], description: "Command palette" },
+      { keys: ["Alt", "1-7"], description: "Jump to a section" },
+      { keys: ["?"], description: "This sheet" },
+      { keys: ["Esc"], description: "Close the top layer" },
     ],
   },
   {
-    name: "Working",
+    name: "Work",
     items: [
       { keys: ["Ctrl", "R"], description: "Resample the host now" },
       { keys: ["Ctrl", "S"], description: "Save the open file" },
-      { keys: ["Ctrl", "B"], description: "Show or hide the live host rail" },
     ],
   },
 ];
 
-const railStorageKey = "ubuntu-control.rail-visible";
+type HopState = "ok" | "wait" | "warn" | "down";
 
-function readRailPreference(): boolean {
-  try {
-    return window.localStorage.getItem(railStorageKey) !== "hidden";
-  } catch {
-    return true;
-  }
-}
-
-type TraceState = "ok" | "pending" | "warn" | "down";
-
-function traceStates(link: HostLink): [TraceState, TraceState, TraceState] {
+function hopStates(link: HostLink): [HopState, HopState, HopState] {
   switch (link.kind) {
     case "live": return ["ok", "ok", "ok"];
-    case "connecting": return ["ok", "pending", "pending"];
+    case "connecting": return ["ok", "wait", "wait"];
     case "degraded": return ["ok", "warn", "warn"];
     case "offline": return ["ok", "down", "down"];
     default: {
@@ -105,70 +73,59 @@ function traceStates(link: HostLink): [TraceState, TraceState, TraceState] {
   }
 }
 
-/** The real path this app takes to the host. Each hop shows its own state. */
-function ConnectionTrace({ link, host, latencyMs }: { link: HostLink; host: string; latencyMs: number | null }) {
-  const [laptop, tunnel, remote] = traceStates(link);
-  const hops: Array<{ label: string; note: string; state: TraceState }> = [
-    { label: "This laptop", note: "127.0.0.1:3000", state: laptop },
-    { label: "Cloudflare", note: "access + tunnel", state: tunnel },
-    { label: host, note: latencyMs === null ? "ssh as arun" : `${formatLatency(latencyMs)} round trip`, state: remote },
+const lampForHop = { ok: "ok", wait: "live", warn: "warn", down: "fail" } as const;
+
+/** The real route this console takes. Each hop reports for itself. */
+function LinkPath({ link, host, latencyMs }: { link: HostLink; host: string; latencyMs: number | null }) {
+  const [laptop, tunnel, remote] = hopStates(link);
+  const hops = [
+    { key: "laptop", title: "this laptop", note: "127.0.0.1:3000", state: laptop },
+    { key: "tunnel", title: "cloudflare", note: "access + tunnel", state: tunnel },
+    { key: "host", title: host, note: latencyMs === null ? "ssh as arun" : `${formatLatency(latencyMs)} round trip`, state: remote },
   ];
   return (
-    <ol className="connection-trace" aria-label="Connection path">
+    <div className="hops">
       {hops.map((hop) => (
-        <li key={hop.label} className={`hop is-${hop.state}`}>
-          <span className="hop-dot" aria-hidden="true" />
+        <div className="hop" key={hop.key}>
+          <Lamp level={lampForHop[hop.state]} />
           <span className="hop-copy">
-            <strong>{hop.label}</strong>
-            <small>{hop.note}</small>
+            <b>{hop.title}</b>
+            <span>{hop.note}</span>
           </span>
-        </li>
+        </div>
       ))}
-    </ol>
+    </div>
   );
 }
 
 export default function App() {
-  const [activeApp, setActiveApp] = useState<AppId>("overview");
+  const [active, setActive] = useState<AppId>("overview");
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [railVisible, setRailVisible] = useState(readRailPreference);
+  const [keysOpen, setKeysOpen] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [logTarget, setLogTarget] = useState<string | null>(null);
-  const [clock, setClock] = useState(() => Date.now());
+  const [inspected, setInspected] = useState<string | null>(null);
 
   const { link, overview, telemetry, audit, token, latencyMs, refreshing, paused, refresh, refreshAudit } = useHostLink();
   const { toasts, notify, dismiss } = useToasts();
+  const { listRef, offset } = useSlidingMarker(active);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setClock(Date.now()), 15_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(railStorageKey, railVisible ? "visible" : "hidden");
-    } catch {
-      // Private browsing blocks storage. The preference simply will not persist.
-    }
-  }, [railVisible]);
-
-  const copy = useCallback(async (value: string, label: string) => {
+  const copy = useCallback(async (value: string, what: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      notify(`Copied ${label}`, "info");
+      notify(`copied ${what}`, "info");
     } catch {
-      notify("The browser blocked clipboard access", "error");
+      notify("the browser blocked clipboard access", "error");
     }
   }, [notify]);
 
-  const openLogsFor = useCallback((name: string) => {
+  const openLogs = useCallback((name: string) => {
     setLogTarget(name);
-    setActiveApp("logs");
+    setActive("logs");
   }, []);
 
-  const run = useCallback((request: Omit<ConfirmRequest, "onConfirm">, operation: () => Promise<{ message: string }>) => {
+  const ask = useCallback((request: Omit<ConfirmRequest, "onConfirm">, operation: () => Promise<{ message: string }>) => {
     setConfirm({
       ...request,
       onConfirm: async () => {
@@ -179,7 +136,7 @@ export default function App() {
           setConfirm(null);
           await Promise.all([refresh({ force: true }), refreshAudit()]);
         } catch (error) {
-          notify(error instanceof Error ? error.message : "The action failed", "error");
+          notify(error instanceof Error ? error.message : "the action failed", "error");
         } finally {
           setConfirmBusy(false);
         }
@@ -188,214 +145,211 @@ export default function App() {
   }, [notify, refresh, refreshAudit]);
 
   const containerAction = useCallback((container: ContainerInfo, action: "start" | "stop" | "restart") => {
-    const copyByAction = {
+    const wording = {
       start: {
-        detail: `Docker will start ${container.name} using its existing configuration.`,
-        effects: [`Image ${container.image} runs again`, container.ports ? `Ports ${container.ports} answer again` : "No published ports change"],
-        confirmLabel: "Start container",
+        detail: `Docker starts ${container.name} again from its existing configuration.`,
+        effects: [`image ${container.image} runs again`, container.ports ? `ports ${container.ports} answer again` : "no published ports change"],
+        confirmLabel: "Start",
         tone: "default" as const,
       },
       restart: {
-        detail: `${container.name} stops and starts again. In-flight requests to it will fail during the swap.`,
-        effects: ["Existing connections drop", "Container state and volumes are kept"],
-        confirmLabel: "Restart container",
+        detail: `${container.name} stops and starts again. Requests in flight to it will fail during the swap.`,
+        effects: ["open connections drop", "volumes and container state are kept"],
+        confirmLabel: "Restart",
         tone: "default" as const,
       },
       stop: {
-        detail: `${container.name} stops and stays down until something starts it again.`,
+        detail: `${container.name} goes down and stays down until something starts it.`,
         effects: [
-          container.ports ? `Ports ${container.ports} stop answering` : "Internal traffic to this container fails",
-          container.restartPolicy === "no" ? "No restart policy will bring it back" : `Restart policy is ${container.restartPolicy}`,
+          container.ports ? `ports ${container.ports} stop answering` : "internal traffic to it starts failing",
+          container.restartPolicy === "no" ? "no restart policy will bring it back" : `restart policy is ${container.restartPolicy}`,
         ],
-        confirmLabel: "Stop container",
+        confirmLabel: "Stop",
         tone: "danger" as const,
       },
     }[action];
 
-    run(
-      { title: `${action[0]?.toUpperCase()}${action.slice(1)} ${container.name}?`, ...copyByAction },
-      () => api.containerAction(container.name, action),
-    );
-  }, [run]);
+    ask({ title: `${action} ${container.name}`, ...wording }, () => api.containerAction(container.name, action));
+  }, [ask]);
 
   const stackAction = useCallback((stack: StackInfo, action: "start" | "stop" | "restart") => {
-    const copyByAction = {
+    const wording = {
       start: {
-        detail: `docker compose up -d runs in ${stack.path}. Images already on the host are reused, nothing is rebuilt.`,
-        effects: [`${stack.total || "All"} services for ${stack.name} come up`, "No image is pulled or built"],
+        detail: `docker compose up -d runs in ${stack.path}. Images already on the host are reused, nothing is built or pulled.`,
+        effects: [`${stack.total || "all"} services come up`, "no image is built or pulled"],
         confirmLabel: "Start stack",
         tone: "default" as const,
       },
       restart: {
-        detail: `Every container in ${stack.name} restarts one after another.`,
-        effects: [`${stack.running} running container${stack.running === 1 ? "" : "s"} bounce`, "Connections through the tunnel drop briefly"],
+        detail: `Every container in ${stack.name} restarts, one after another.`,
+        effects: [`${stack.running} running container${stack.running === 1 ? "" : "s"} bounce`, "traffic through the tunnel drops briefly"],
         confirmLabel: "Restart stack",
         tone: "default" as const,
       },
       stop: {
         detail: `docker compose stop runs in ${stack.path}. ${stack.name} stays down until you start it again.`,
-        effects: [`${stack.running} container${stack.running === 1 ? "" : "s"} stop`, "Anything depending on this stack starts failing"],
+        effects: [`${stack.running} container${stack.running === 1 ? "" : "s"} stop`, "anything depending on this stack starts failing"],
         confirmLabel: "Stop stack",
         tone: "danger" as const,
       },
     }[action];
 
-    run(
-      { title: `${action[0]?.toUpperCase()}${action.slice(1)} ${stack.name}?`, ...copyByAction },
-      () => api.stackAction(stack.id, action),
-    );
-  }, [run]);
+    ask({ title: `${action} ${stack.name}`, ...wording }, () => api.stackAction(stack.id, action));
+  }, [ask]);
 
   const commands = useMemo<PaletteCommand[]>(() => {
-    const appCommands: PaletteCommand[] = applications.map((application) => ({
-      id: `app-${application.id}`,
-      group: "Applications",
-      label: application.label,
-      detail: application.purpose,
-      icon: <application.icon size={16} />,
-      shortcut: `Alt ${application.shortcut}`,
-      run: () => setActiveApp(application.id),
+    const sections: PaletteCommand[] = entries.map((entry) => ({
+      id: `go-${entry.id}`,
+      group: "Sections",
+      mark: numberOf(entry.id),
+      label: entry.name,
+      detail: entry.purpose,
+      shortcut: `Alt ${numberOf(entry.id).slice(1)}`,
+      run: () => setActive(entry.id),
     }));
 
-    const controlCommands: PaletteCommand[] = [
+    const controls: PaletteCommand[] = [
       {
-        id: "refresh",
+        id: "resample",
         group: "Controller",
-        label: "Resample the host",
+        mark: "↻",
+        label: "Resample now",
         detail: "Force a fresh read instead of waiting for the next poll",
-        icon: <RefreshCw size={16} />,
         shortcut: "Ctrl R",
         run: () => void refresh({ force: true }),
       },
       {
-        id: "rail",
+        id: "keys",
         group: "Controller",
-        label: railVisible ? "Hide the live host rail" : "Show the live host rail",
-        detail: "Toggle the right-hand telemetry column",
-        icon: railVisible ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />,
-        shortcut: "Ctrl B",
-        run: () => setRailVisible((value) => !value),
-      },
-      {
-        id: "shortcuts",
-        group: "Controller",
-        label: "Keyboard shortcuts",
+        mark: "⌨",
+        label: "Keyboard",
         detail: "Every shortcut this console understands",
-        icon: <Keyboard size={16} />,
         shortcut: "?",
-        run: () => setShortcutsOpen(true),
+        run: () => setKeysOpen(true),
       },
       {
         id: "copy-host",
         group: "Controller",
-        label: "Copy the host name",
-        detail: overview ? overview.host : "arun-H110",
-        icon: <Copy size={16} />,
+        mark: "⧉",
+        label: "Copy host name",
+        detail: overview?.host ?? "arun-H110",
         run: () => void copy(overview?.host ?? "arun-H110", "host name"),
       },
     ];
 
-    const stackCommands: PaletteCommand[] = (overview?.stacks ?? []).flatMap((stack) => {
-      const entries: PaletteCommand[] = [];
-      if (stack.status === "stopped") {
-        entries.push({
-          id: `stack-start-${stack.id}`,
-          group: "Stacks",
-          label: `Start ${stack.name}`,
-          detail: `docker compose up -d in ${stack.path}`,
-          keywords: stack.id,
-          icon: <Play size={16} />,
-          run: () => stackAction(stack, "start"),
-        });
-      } else {
-        entries.push({
-          id: `stack-restart-${stack.id}`,
-          group: "Stacks",
-          label: `Restart ${stack.name}`,
-          detail: `${stack.running} of ${stack.total} containers running`,
-          keywords: stack.id,
-          icon: <RotateCw size={16} />,
-          run: () => stackAction(stack, "restart"),
-        });
-        entries.push({
-          id: `stack-stop-${stack.id}`,
-          group: "Stacks",
-          label: `Stop ${stack.name}`,
-          detail: `Takes ${stack.running} container${stack.running === 1 ? "" : "s"} down`,
-          keywords: stack.id,
-          icon: <Power size={16} />,
-          tone: "danger",
-          run: () => stackAction(stack, "stop"),
-        });
-      }
-      return entries;
-    });
+    const stacks: PaletteCommand[] = (overview?.stacks ?? []).flatMap((stack) =>
+      stack.status === "stopped"
+        ? [{
+            id: `stack-start-${stack.id}`,
+            group: "Stacks",
+            mark: "▶",
+            label: `Start ${stack.name}`,
+            detail: `compose up -d in ${stack.path}`,
+            keywords: stack.id,
+            run: () => stackAction(stack, "start"),
+          }]
+        : [
+            {
+              id: `stack-restart-${stack.id}`,
+              group: "Stacks",
+              mark: "↻",
+              label: `Restart ${stack.name}`,
+              detail: `${stack.running} of ${stack.total} containers running`,
+              keywords: stack.id,
+              run: () => stackAction(stack, "restart"),
+            },
+            {
+              id: `stack-stop-${stack.id}`,
+              group: "Stacks",
+              mark: "⏻",
+              label: `Stop ${stack.name}`,
+              detail: `takes ${stack.running} container${stack.running === 1 ? "" : "s"} down`,
+              keywords: stack.id,
+              tone: "danger" as const,
+              run: () => stackAction(stack, "stop"),
+            },
+          ],
+    );
 
-    const logCommands: PaletteCommand[] = (overview?.containers ?? []).slice(0, 24).map((container) => ({
-      id: `logs-${container.id}`,
-      group: "Logs",
-      label: `Logs: ${container.name}`,
+    const tails: PaletteCommand[] = (overview?.containers ?? []).slice(0, 30).map((container) => ({
+      id: `tail-${container.id}`,
+      group: "Tail a container",
+      mark: "≡",
+      label: container.name,
       detail: container.image,
-      keywords: `${container.project ?? ""} ${container.service ?? ""}`,
-      icon: <ScrollText size={16} />,
-      run: () => openLogsFor(container.name),
+      keywords: `${container.project ?? ""} ${container.service ?? ""} logs`,
+      run: () => openLogs(container.name),
     }));
 
-    return [...appCommands, ...controlCommands, ...stackCommands, ...logCommands];
-  }, [copy, openLogsFor, overview, railVisible, refresh, stackAction]);
+    return [...sections, ...controls, ...stacks, ...tails];
+  }, [copy, openLogs, overview, refresh, stackAction]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const editing = event.target instanceof HTMLElement
+      const typing = event.target instanceof HTMLElement
         && (event.target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(event.target.tagName));
+      const meta = event.ctrlKey || event.metaKey;
 
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      if (meta && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen((value) => !value);
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "r") {
+      if (meta && event.key.toLowerCase() === "r") {
         event.preventDefault();
         void refresh({ force: true });
         return;
       }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        setRailVisible((value) => !value);
-        return;
-      }
-      if (event.altKey && !event.ctrlKey && !event.metaKey) {
-        const application = applications.find((item) => item.shortcut === event.key);
-        if (application) {
+      if (event.altKey && !meta) {
+        const entry = entries[Number(event.key) - 1];
+        if (entry && event.key >= "1" && event.key <= "7") {
           event.preventDefault();
-          setActiveApp(application.id);
+          setActive(entry.id);
         }
         return;
       }
-      if (event.key === "?" && !editing) {
+      if (event.key === "?" && !typing) {
         event.preventDefault();
-        setShortcutsOpen(true);
+        setKeysOpen(true);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [refresh]);
 
-  const current = applications.find((item) => item.id === activeApp) ?? applications[0]!;
   const summary = overview ? summarize(overview) : null;
   const cpuSeries = seriesOf(telemetry, (sample) => sample.cpuPercent ?? sample.loadPercent);
+  const cpuNow = cpuSeries.at(-1) ?? null;
+  const selectedContainer = overview?.containers.find((container) => container.name === inspected) ?? null;
+  const showInspector = active === "containers" && selectedContainer !== null;
 
-  const workspace = ((): ReactNode => {
+  const counts: Partial<Record<AppId, string>> = {
+    overview: summary ? `${summary.healthyStacks}/${summary.totalStacks}` : "",
+    containers: summary ? `${summary.running}/${summary.total}` : "",
+    logs: overview ? String(overview.containers.length) : "",
+    services: overview ? `${overview.services.filter((service) => service.active).length}/${overview.services.length}` : "",
+    activity: audit.length ? String(audit.length) : "",
+  };
+
+  const body = ((): ReactNode => {
     if (!overview) {
       return link.kind === "offline"
-        ? <OfflinePlaceholder message={link.message} onRetry={() => void refresh({ force: true })} />
-        : <LoadingState label="Reading the Ubuntu host" />;
+        ? <Offline message={link.message} onRetry={() => void refresh({ force: true })} />
+        : <Busy label="reading the ubuntu host" />;
     }
-    switch (activeApp) {
+    switch (active) {
       case "overview":
-        return <OverviewApp overview={overview} telemetry={telemetry} onStackAction={stackAction} onOpenApp={setActiveApp} />;
+        return <OverviewApp overview={overview} telemetry={telemetry} onStackAction={stackAction} onOpenApp={setActive} />;
       case "containers":
-        return <ContainersApp containers={overview.containers} onAction={containerAction} onInspectLogs={openLogsFor} onCopy={(value, label) => void copy(value, label)} />;
+        return (
+          <ContainersApp
+            containers={overview.containers}
+            selected={inspected}
+            onSelect={setInspected}
+            onAction={containerAction}
+            onInspectLogs={openLogs}
+          />
+        );
       case "logs":
         return <LogsApp containers={overview.containers} token={token} initialContainer={logTarget} notify={notify} />;
       case "terminal":
@@ -407,188 +361,187 @@ export default function App() {
       case "activity":
         return <ActivityApp entries={audit} />;
       default: {
-        const exhaustive: never = activeApp;
+        const exhaustive: never = active;
         return exhaustive;
       }
     }
   })();
 
   return (
-    <div className="desktop-shell">
-      <a className="skip-link" href="#workspace">Skip to the active application</a>
+    <div className="shell">
+      <a className="skip-link" href="#work">Skip to the active section</a>
 
-      <header className="system-bar">
-        <div className="brand-lockup">
-          <span className="brand-symbol" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" role="presentation">
-              <circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeDasharray="3.5 3.1" />
-              <circle cx="12" cy="12" r="3.4" fill="currentColor" />
-            </svg>
-          </span>
-          <span className="brand-copy">
-            <strong>Ubuntu Control</strong>
-            <small>local console</small>
+      <header className="header">
+        <div className="header-id">
+          <svg className="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+            <path d="M4.4 1.5H1.5v15h2.9M13.6 1.5h2.9v15h-2.9" fill="none" stroke="currentColor" strokeWidth="1.4" />
+            <rect x="6.6" y="5" width="4.8" height="1.5" fill="currentColor" />
+            <rect x="6.6" y="8.25" width="4.8" height="1.5" fill="currentColor" />
+            <rect x="6.6" y="11.5" width="2.6" height="1.5" fill="currentColor" />
+          </svg>
+          <span className="header-name">
+            <b>{overview?.host ?? "arun-H110"}</b>
+            <span>
+              {overview ? overview.kernel : "connecting"}
+              <i>·</i>
+              {overview ? `up ${formatDuration(overview.uptimeSeconds)}` : "cloudflare tunnel"}
+            </span>
           </span>
         </div>
 
-        <button type="button" className="command-trigger" onClick={() => setPaletteOpen(true)}>
-          <Command size={14} aria-hidden="true" />
-          <span>Search applications and actions</span>
-          <kbd>Ctrl K</kbd>
-        </button>
-
-        <div className="system-status">
-          <span className={`connection-pill is-${link.kind}`}>
-            {link.kind === "live" ? <Wifi size={13} /> : link.kind === "offline" ? <WifiOff size={13} /> : link.kind === "degraded" ? <TriangleAlert size={13} /> : <Activity size={13} />}
-            {link.kind === "live" ? "Host online" : link.kind === "degraded" ? "Last read failed" : link.kind === "offline" ? "Disconnected" : "Connecting"}
+        <div className="header-trace">
+          <span className="trace-readout">
+            <b>
+              {cpuNow === null ? "—" : formatPercent(cpuNow)}
+              <em>cpu</em>
+            </b>
+            <span className="label">{telemetry.length} samples</span>
           </span>
-          <span className="latency-readout" title="Round trip for the last host read">{formatLatency(latencyMs)}</span>
-          <IconButton
-            label={paused ? "Polling paused while this tab is hidden" : "Resample the host"}
-            icon={<RefreshCw size={15} />}
-            busy={refreshing}
+          <Trace series={cpuSeries} ceiling={100} label="Processor load" />
+        </div>
+
+        <div className="header-tools">
+          <span className="link-state">
+            <Lamp level={link.kind === "live" ? "ok" : link.kind === "connecting" ? "live" : link.kind === "degraded" ? "warn" : "fail"} />
+            <span>{link.kind === "live" ? "linked" : link.kind === "degraded" ? "stale" : link.kind === "offline" ? "no link" : "linking"}</span>
+            <em>{formatLatency(latencyMs)}</em>
+          </span>
+          <Btn variant="quiet" icon={<Search size={13} />} onClick={() => setPaletteOpen(true)}>
+            find <kbd>Ctrl K</kbd>
+          </Btn>
+          <Act
+            label={paused ? "Polling is paused while this tab is hidden" : "Resample the host"}
+            icon={<RefreshCw size={13} />}
+            disabled={refreshing}
             onClick={() => void refresh({ force: true })}
           />
-          <IconButton label="Keyboard shortcuts" icon={<Keyboard size={15} />} onClick={() => setShortcutsOpen(true)} />
-          <IconButton
-            label={railVisible ? "Hide the live host rail" : "Show the live host rail"}
-            icon={railVisible ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
-            onClick={() => setRailVisible((value) => !value)}
-          />
-          <time dateTime={new Date(clock).toISOString()}>{formatDay(clock)}</time>
+          <Act label="Keyboard shortcuts" icon={<Keyboard size={13} />} onClick={() => setKeysOpen(true)} />
         </div>
       </header>
 
-      <main className={`desktop-main${railVisible ? "" : " rail-hidden"}`}>
-        <nav className="app-dock" aria-label="Applications">
-          <span className="dock-mark" aria-hidden="true"><Gauge size={17} /></span>
-          {applications.map((application) => {
-            const Icon = application.icon;
-            const active = activeApp === application.id;
-            return (
-              <span className="t-tt-wrap tt-right dock-slot" key={application.id}>
-                <button
-                  type="button"
-                  className={`dock-button t-tt-trigger${active ? " is-active" : ""}`}
-                  aria-current={active ? "page" : undefined}
-                  aria-label={application.label}
-                  onClick={() => setActiveApp(application.id)}
-                >
-                  <Icon size={19} />
-                </button>
-                <span className="t-tt" role="tooltip">
-                  {application.label}
-                  <kbd>Alt {application.shortcut}</kbd>
-                </span>
-              </span>
-            );
-          })}
+      <div className={`shell-body${showInspector ? " has-inspector" : ""}`}>
+        <nav className="index" aria-label="Sections">
+          <div className="index-list" ref={listRef}>
+            <span className="index-marker" style={{ transform: `translateY(${offset}px)` }} aria-hidden="true" />
+            {entries.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className="index-item"
+                aria-current={active === entry.id ? "page" : undefined}
+                onClick={() => setActive(entry.id)}
+              >
+                <span className="index-num">{numberOf(entry.id)}</span>
+                <span className="index-name">{entry.name}</span>
+                <span className="index-count">{counts[entry.id] ?? ""}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="index-section">
+            <Label>Link path</Label>
+            <LinkPath link={link} host={overview?.host ?? "arun-H110"} latencyMs={latencyMs} />
+          </div>
+
+          <p className="index-foot">
+            bound to 127.0.0.1 only
+            <br />
+            no inbound port on the host
+          </p>
         </nav>
 
-        <section className="workspace-window" id="workspace" aria-label={current.label}>
-          <div className="window-chrome">
-            <span className="window-controls" aria-hidden="true"><i /><i /><i /></span>
-            <p className="window-title"><current.icon size={14} aria-hidden="true" />{current.label}</p>
-            <p className="window-context mono-cell">{overview?.host ?? "arun-H110"}</p>
-          </div>
-
+        <main className="content" id="work" aria-label={entries.find((entry) => entry.id === active)?.name}>
           {link.kind === "degraded" && (
-            <div className="link-banner is-warning" role="status">
-              <TriangleAlert size={16} aria-hidden="true" />
-              <div>
-                <strong>Showing the last good reading</strong>
-                <span>{link.message} Sampled {formatRelativeTime(link.sampledAt, clock)}.</span>
-              </div>
-              <button type="button" className="link-button" onClick={() => void refresh({ force: true })}>Retry now</button>
+            <div className="banner" role="status">
+              <TriangleAlert size={14} aria-hidden="true" />
+              <p>
+                <b>Showing the last good reading.</b> {link.message} Sampled {formatRelativeTime(link.sampledAt)}.
+              </p>
+              <button type="button" className="link" onClick={() => void refresh({ force: true })}>retry</button>
             </div>
           )}
-
-          <div className="workspace-content" key={activeApp}>
-            <Suspense fallback={<LoadingState label={`Opening ${current.label}`} />}>{workspace}</Suspense>
+          <div className="content-body" key={active}>
+            <Suspense fallback={<Busy label={`opening ${entries.find((entry) => entry.id === active)?.name.toLowerCase()}`} />}>
+              {body}
+            </Suspense>
           </div>
-        </section>
+        </main>
 
-        {railVisible && (
-          <aside className="telemetry-rail" aria-label="Live host summary">
-            <div className="rail-block">
-              <p className="rail-heading">Link path</p>
-              <ConnectionTrace link={link} host={overview?.host ?? "arun-H110"} latencyMs={latencyMs} />
+        {showInspector && selectedContainer && (
+          <aside className="inspector" aria-label={`Detail for ${selectedContainer.name}`}>
+            <div className="inspector-head">
+              <Label>Container</Label>
+              <span className="acts">
+                <Act label="Copy name" icon={<Copy size={13} />} onClick={() => void copy(selectedContainer.name, "container name")} />
+                <Act label="Close detail" icon={<X size={13} />} onClick={() => setInspected(null)} />
+              </span>
             </div>
-
-            <div className="rail-block">
-              <p className="rail-heading">Host</p>
-              <p className="rail-host">
-                <strong>{overview?.host ?? "arun-H110"}</strong>
-                <small>{overview?.kernel ?? "Connecting through Cloudflare"}</small>
-              </p>
-              <dl className="rail-figures">
-                <div>
-                  <dt>Running</dt>
-                  <dd>{summary ? summary.running : <Skeleton width={28} height={16} />}</dd>
-                </div>
-                <div>
-                  <dt>Load</dt>
-                  <dd>{overview ? overview.load[0].toFixed(2) : <Skeleton width={34} height={16} />}</dd>
-                </div>
-                <div>
-                  <dt>Stacks</dt>
-                  <dd>{summary ? `${summary.healthyStacks}/${summary.totalStacks}` : <Skeleton width={30} height={16} />}</dd>
-                </div>
-              </dl>
-              <div className="rail-chart">
-                <Sparkline values={cpuSeries} tone="accent" ceiling={100} label="CPU history" />
-                <span>CPU, last {Math.max(cpuSeries.length, 1)} samples</span>
-              </div>
+            <div className="inspector-title">
+              <b>{selectedContainer.name}</b>
+              <State level={containerHealth(selectedContainer) === "healthy" ? "ok" : containerHealth(selectedContainer) === "degraded" ? "warn" : containerHealth(selectedContainer) === "connecting" ? "live" : "fail"}>
+                {containerStatusLabel(selectedContainer)}
+              </State>
             </div>
-
-            <div className="rail-block">
-              <p className="rail-heading">Recent activity</p>
-              {audit.length === 0 ? (
-                <p className="rail-empty">Nothing recorded yet. Actions you take here show up instantly.</p>
+            <div className="inspector-block">
+              <Spec
+                rows={[
+                  { term: "Image", value: selectedContainer.image },
+                  { term: "Project", value: selectedContainer.project ?? <em>standalone</em> },
+                  { term: "Service", value: selectedContainer.service ?? <em>none</em> },
+                  { term: "Ports", value: selectedContainer.ports || <em>internal only</em> },
+                  { term: "Restart", value: selectedContainer.restartPolicy || <em>no</em> },
+                  { term: "Status", value: selectedContainer.status || <em>unknown</em> },
+                  {
+                    term: "Started",
+                    value: selectedContainer.startedAt
+                      ? formatRelativeTime(Date.parse(selectedContainer.startedAt))
+                      : <em>not running</em>,
+                  },
+                  { term: "Id", value: selectedContainer.id.slice(0, 12) },
+                ]}
+              />
+            </div>
+            <div className="inspector-actions">
+              <Btn variant="line" icon={<ScrollText size={13} />} onClick={() => openLogs(selectedContainer.name)}>Tail logs</Btn>
+              {selectedContainer.state === "running" ? (
+                <Btn variant="danger" onClick={() => containerAction(selectedContainer, "stop")}>Stop</Btn>
               ) : (
-                <ul className="rail-activity">
-                  {audit.slice(0, 5).map((entry) => (
-                    <li key={entry.id}>
-                      <button type="button" onClick={() => setActiveApp("activity")}>
-                        <StatusDot state={entry.outcome === "success" ? "healthy" : "stopped"} />
-                        <span>
-                          <strong>{entry.action}</strong>
-                          <small>{entry.target}</small>
-                        </span>
-                        <time dateTime={entry.timestamp}>{formatClock(new Date(entry.timestamp))}</time>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <Btn variant="primary" onClick={() => containerAction(selectedContainer, "start")}>Start</Btn>
               )}
             </div>
           </aside>
         )}
-      </main>
+      </div>
+
+      <footer className="status-bar">
+        <span>protocol <b>{overview?.protocol ?? "—"}</b></span>
+        <span>poll <b>{paused ? "paused" : "8s"}</b></span>
+        <span>memory <b>{overview ? formatBytes(overview.memory.used) : <Skeleton width={40} />}</b></span>
+        <span>rtt <b>{formatLatency(latencyMs)}</b></span>
+        <span className="status-spacer" />
+        <span>last sample <b>{overview ? formatClock(overview.timestamp) : "—"}</b></span>
+        <span className="status-hint"><kbd>?</kbd> keys</span>
+      </footer>
 
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
-      {shortcutsOpen && <ShortcutsDialog groups={shortcutGroups} onClose={() => setShortcutsOpen(false)} />}
+      {keysOpen && <ShortcutsDialog groups={shortcutGroups} onClose={() => setKeysOpen(false)} />}
       {confirm && <ConfirmDialog request={confirm} busy={confirmBusy} onClose={() => !confirmBusy && setConfirm(null)} />}
       <Toasts toasts={toasts} onDismiss={dismiss} />
     </div>
   );
 }
 
-function OfflinePlaceholder({ message, onRetry }: { message: string; onRetry: () => void }) {
+function Offline({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="offline-placeholder">
-      <span className="offline-mark" aria-hidden="true"><WifiOff size={22} /></span>
-      <h2>The Ubuntu host is not answering</h2>
+    <div className="offline">
+      <h2>no link to the host</h2>
       <p>{message}</p>
-      <ul>
-        <li>Check that <code>ssh -o BatchMode=yes ubuntu-server &quot;whoami&quot;</code> still works in PowerShell.</li>
-        <li>Confirm <code>cloudflared</code> is running on the host and your Access session has not expired.</li>
-        <li>The controller keeps retrying with a backoff, so this clears on its own once the tunnel is back.</li>
-      </ul>
-      <button type="button" className="button primary" onClick={onRetry}>
-        <span className="button-icon" aria-hidden="true"><RefreshCw size={15} /></span>
-        <span className="button-label">Try again now</span>
-      </button>
+      <ol>
+        <li>Check <code>ssh -o BatchMode=yes ubuntu-server &quot;whoami&quot;</code> still answers in PowerShell.</li>
+        <li>Confirm <code>cloudflared</code> is up on the host and your Access session has not expired.</li>
+        <li>The controller keeps retrying with a backoff, so this clears itself once the tunnel is back.</li>
+      </ol>
+      <Btn variant="primary" icon={<RefreshCw size={13} />} onClick={onRetry}>Retry now</Btn>
     </div>
   );
 }
