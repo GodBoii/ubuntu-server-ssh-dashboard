@@ -390,7 +390,8 @@
   background: var(--signal-dim);
 }
 
-.log-foot {
+/* Shared footer strip: logs, containers, terminal and services all end in one. */
+.foot {
   display: flex;
   align-items: center;
   gap: var(--s4);
@@ -419,6 +420,37 @@
 .legend i {
   width: 6px;
   height: 6px;
+  background: var(--rule-hi);
+}
+
+.legend i.error {
+  background: var(--lamp-fail);
+}
+
+.legend i.warn {
+  background: var(--lamp-warn);
+}
+
+.streams-empty {
+  padding: var(--s2) var(--s3);
+}
+
+/* Selection target inside a table cell: a real button, so the row is reachable
+   by keyboard and the action buttons beside it never fight for the click. */
+.cell-btn {
+  display: block;
+  width: 100%;
+  color: var(--paper);
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-btn:hover {
+  color: var(--signal-hi);
 }
 
 /* ----------------------------------------------------------- 04 terminal */
