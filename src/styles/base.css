@@ -1,0 +1,197 @@
+/* --------------------------------------------------------------- foundation */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  min-width: 340px;
+}
+
+body {
+  overflow: hidden;
+  background: var(--ink-900);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1 {
+  font-size: var(--t-title);
+  font-weight: 500;
+  letter-spacing: var(--track-tight);
+}
+
+h2 {
+  font-size: var(--t-lead);
+  font-weight: 500;
+}
+
+h3 {
+  font-size: var(--t-data);
+  font-weight: 500;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Every number in this app is a machine reading, so tabular figures are the
+   default rather than an opt-in. */
+code,
+kbd,
+time,
+input,
+textarea,
+table,
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+}
+
+:focus-visible {
+  outline: 1px solid var(--signal);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--signal-dim);
+  color: var(--paper);
+}
+
+/* Micro label: the one typographic device that repeats across the whole app. */
+.label {
+  color: var(--paper-3);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+.note {
+  color: var(--paper-3);
+  font-size: var(--t-fine);
+  line-height: 1.6;
+}
+
+.prose {
+  max-width: 68ch;
+  color: var(--paper-2);
+  font-size: var(--t-body);
+  line-height: 1.65;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--s2);
+  left: 50%;
+  z-index: calc(var(--z-toast) + 1);
+  padding: var(--s2) var(--s4);
+  transform: translate(-50%, calc(-100% - var(--s4)));
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-size: var(--t-fine);
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform var(--t-base) var(--ease);
+}
+
+.skip-link:focus-visible {
+  transform: translate(-50%, 0);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 1px solid var(--rule-hi);
+  border-radius: 2px;
+  color: var(--paper-3);
+  font-size: var(--t-micro);
+  line-height: 1;
+}
+
+/* Scrollbars belong to the surface they sit on. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-hi) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  background: var(--rule-hi);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #45423d;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
