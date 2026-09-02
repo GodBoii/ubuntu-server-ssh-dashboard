@@ -462,6 +462,17 @@
   border-left: 1px solid var(--rule);
 }
 
+.term-find input {
+  width: 128px;
+  border: 0;
+  border-bottom: 1px solid var(--signal);
+  outline: 0;
+  background: none;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+}
+
 .term-surface {
   flex: 1;
   min-height: 0;
