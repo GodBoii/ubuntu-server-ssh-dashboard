@@ -1,0 +1,739 @@
+/* ---------------------------------------------------------------------------
+   Parts
+
+   The full vocabulary of the console. Deliberately short: lamps, figures,
+   bars, tables, spec lists, four button shapes, two input shapes. Anything
+   that would have been a card is a table row or a spec row instead.
+   --------------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------- lamps */
+
+/* A square reads as an indicator lamp. Circles read as decoration, and every
+   dashboard on earth uses circles. */
+.lamp {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  display: inline-block;
+  background: var(--lamp-idle);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
+}
+
+.lamp.ok {
+  background: var(--lamp-ok);
+  outline: 3px solid var(--lamp-ok-dim);
+}
+
+.lamp.warn {
+  background: var(--lamp-warn);
+  outline: 3px solid var(--lamp-warn-dim);
+}
+
+.lamp.fail {
+  background: var(--lamp-fail);
+  outline: 3px solid var(--lamp-fail-dim);
+}
+
+.lamp.live {
+  background: var(--signal);
+  outline: 3px solid var(--signal-dim);
+  animation: lamp-blink 1.6s var(--ease-linear) infinite;
+}
+
+@keyframes lamp-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+}
+
+/* ---------------------------------------------------------------- figure */
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--mono);
+  font-weight: 500;
+  letter-spacing: var(--track-tight);
+  line-height: 1;
+}
+
+.figure.lg {
+  font-size: var(--t-figure-lg);
+}
+
+.figure.md {
+  font-size: var(--t-figure);
+}
+
+.figure.sm {
+  font-size: var(--t-lead);
+}
+
+.figure em {
+  color: var(--paper-3);
+  font-size: var(--t-fine);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+/* ------------------------------------------------------------------- bar */
+
+/* Hairline bar with quarter ticks. No rounded ends, no gradient fill. */
+.bar {
+  position: relative;
+  height: 6px;
+  background: var(--ink-700);
+  overflow: hidden;
+}
+
+.bar > i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: var(--paper-3);
+  transition: transform var(--t-slow) var(--ease), background var(--t-base) var(--ease);
+}
+
+.bar.ok > i {
+  background: var(--lamp-ok);
+}
+
+.bar.warn > i {
+  background: var(--lamp-warn);
+}
+
+.bar.fail > i {
+  background: var(--lamp-fail);
+}
+
+.bar.signal > i {
+  background: var(--signal);
+}
+
+.bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(90deg, transparent calc(25% - 1px), var(--ink-900) calc(25% - 1px), var(--ink-900) 25%, transparent 25%);
+  background-size: 25% 100%;
+  opacity: 0.55;
+}
+
+/* ----------------------------------------------------------------- trace */
+
+.trace {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.trace-line {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 1.25px;
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
+}
+
+.trace-base {
+  stroke: var(--rule);
+  stroke-width: 1px;
+}
+
+.trace-tick {
+  stroke: var(--rule);
+  stroke-width: 1px;
+}
+
+.trace-head {
+  fill: var(--signal-hi);
+}
+
+.trace-empty {
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  height: 28px;
+  padding: 0 var(--s3);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: var(--t-fine);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn.primary {
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-weight: 600;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--signal-hi);
+}
+
+.btn.line {
+  border-color: var(--rule-hi);
+  color: var(--paper-2);
+}
+
+.btn.line:hover:not(:disabled) {
+  border-color: var(--paper-4);
+  background: var(--ink-750);
+  color: var(--paper);
+}
+
+.btn.quiet {
+  color: var(--paper-3);
+}
+
+.btn.quiet:hover:not(:disabled) {
+  background: var(--ink-750);
+  color: var(--paper);
+}
+
+.btn.danger {
+  border-color: var(--lamp-fail);
+  color: var(--text-fail);
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: var(--lamp-fail);
+  border-color: var(--lamp-fail);
+  color: #1a0705;
+}
+
+.btn.wide {
+  width: 100%;
+}
+
+/* Icon action: square, hairline, no fill until hover. */
+.act {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--paper-3);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.act:hover:not(:disabled) {
+  border-color: var(--rule-hi);
+  background: var(--ink-750);
+  color: var(--paper);
+}
+
+.act:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.act[aria-pressed="true"] {
+  border-color: var(--signal-line);
+  background: var(--signal-dim);
+  color: var(--signal-hi);
+}
+
+.act.danger:hover:not(:disabled) {
+  border-color: var(--lamp-fail);
+  background: var(--lamp-fail-dim);
+  color: var(--text-fail);
+}
+
+.act.go:hover:not(:disabled) {
+  border-color: var(--signal-line);
+  background: var(--signal-dim);
+  color: var(--signal-hi);
+}
+
+.acts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.link {
+  color: var(--signal-hi);
+  font-size: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--signal-line);
+  text-underline-offset: 3px;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.link:hover {
+  color: var(--paper);
+}
+
+/* Tooltip, only for icon-only actions. Flat, mono, no shadow, no scaling. */
+.tip {
+  position: relative;
+  display: inline-flex;
+}
+
+.tip > .tip-body {
+  position: absolute;
+  z-index: var(--z-float);
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px var(--s2);
+  border: 1px solid var(--rule-hi);
+  background: var(--ink-700);
+  color: var(--paper-2);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.tip:hover > .tip-body,
+.tip > :focus-visible + .tip-body {
+  opacity: 1;
+  transition-delay: 220ms;
+}
+
+.tip.right > .tip-body {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 7px);
+  transform: translateY(-50%);
+}
+
+/* ---------------------------------------------------------------- inputs */
+
+/* Underline field: a rule that lights up. Boxed inputs everywhere is the
+   look this redesign is getting away from. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  height: 26px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--rule-hi);
+  color: var(--paper-4);
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.field:focus-within {
+  border-bottom-color: var(--signal);
+}
+
+.field:focus-within > svg {
+  color: var(--signal);
+}
+
+.field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+}
+
+.field input::placeholder {
+  color: var(--paper-4);
+}
+
+.field input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.field.w-sm input {
+  width: 110px;
+}
+
+.field.w-md input {
+  width: 170px;
+}
+
+.picker {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.picker select {
+  height: 26px;
+  padding: 0 var(--s4) 0 2px;
+  border: 0;
+  border-bottom: 1px solid var(--rule-hi);
+  border-radius: 0;
+  background: none;
+  color: var(--paper-2);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+  appearance: none;
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.picker select:hover {
+  border-bottom-color: var(--paper-4);
+  color: var(--paper);
+}
+
+.picker::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-right: 1px solid var(--paper-4);
+  border-bottom: 1px solid var(--paper-4);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* Filter row: text toggles with a lamp and a count. No sliding pill widget. */
+.choices {
+  display: inline-flex;
+  align-items: stretch;
+  gap: var(--s3);
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 1px;
+  border-bottom: 1px solid transparent;
+  color: var(--paper-3);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+
+.choice:hover {
+  color: var(--paper-2);
+}
+
+.choice[aria-checked="true"] {
+  border-bottom-color: var(--signal);
+  color: var(--paper);
+}
+
+.choice u {
+  color: var(--paper-4);
+  font-size: var(--t-micro);
+  text-decoration: none;
+}
+
+.choice[aria-checked="true"] u {
+  color: var(--signal-hi);
+}
+
+/* ---------------------------------------------------------------- tables */
+
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+  table-layout: fixed;
+}
+
+.grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: 28px;
+  padding: 0 var(--s3);
+  border-bottom: 1px solid var(--rule-hi);
+  background: var(--ink-850);
+  color: var(--paper-3);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.grid tbody td {
+  height: 34px;
+  padding: 0 var(--s3);
+  border-bottom: 1px solid var(--rule);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.grid tbody tr {
+  transition: background var(--t-fast) var(--ease);
+}
+
+.grid tbody tr:hover {
+  background: var(--ink-850);
+}
+
+.grid tbody tr[aria-selected="true"] {
+  background: var(--ink-700);
+}
+
+.grid tbody tr[aria-selected="true"] td:first-child {
+  box-shadow: inset 2px 0 0 var(--signal);
+}
+
+.grid td.dim {
+  color: var(--paper-3);
+}
+
+.grid td.name {
+  color: var(--paper);
+}
+
+.grid td.num {
+  text-align: right;
+}
+
+.grid .acts {
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
+
+.grid tbody tr:hover .acts,
+.grid tbody tr:focus-within .acts,
+.grid tbody tr[aria-selected="true"] .acts {
+  opacity: 1;
+}
+
+.sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color var(--t-fast) var(--ease);
+}
+
+.sortable:hover {
+  color: var(--paper);
+}
+
+[aria-sort="ascending"] .sortable::after {
+  content: "\2191";
+  color: var(--signal);
+}
+
+[aria-sort="descending"] .sortable::after {
+  content: "\2193";
+  color: var(--signal);
+}
+
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ------------------------------------------------------------ spec lists */
+
+/* The replacement for cards: a two-column definition list on hairline rows. */
+.spec {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) minmax(0, 1fr);
+}
+
+.spec > div {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.spec > div:last-child {
+  border-bottom: 0;
+}
+
+.spec dt {
+  color: var(--paper-3);
+  font-family: var(--sans);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+}
+
+.spec dd {
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: var(--t-data);
+  overflow-wrap: anywhere;
+}
+
+.spec dd em {
+  color: var(--paper-3);
+  font-style: normal;
+}
+
+/* ------------------------------------------------------- empty and busy */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--s2);
+  height: 100%;
+  min-height: 180px;
+  padding: var(--s6);
+}
+
+.empty b {
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  font-weight: 500;
+}
+
+.empty p {
+  max-width: 56ch;
+  color: var(--paper-3);
+  font-size: var(--t-fine);
+  line-height: 1.65;
+}
+
+.empty .btn {
+  margin-top: var(--s2);
+}
+
+.empty::before {
+  content: "";
+  width: 26px;
+  height: 1px;
+  margin-bottom: var(--s2);
+  background: var(--signal);
+}
+
+.busy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  justify-content: center;
+  height: 100%;
+  min-height: 140px;
+  padding: var(--s6);
+  color: var(--paper-3);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+}
+
+/* Indeterminate 1px rule: a progress hint that does not spin. */
+.busy::after {
+  content: "";
+  width: 120px;
+  height: 1px;
+  background: var(--signal);
+  transform-origin: left center;
+  animation: busy-sweep 1.15s var(--ease) infinite;
+}
+
+@keyframes busy-sweep {
+  0% {
+    transform: scaleX(0.05);
+    opacity: 0.4;
+  }
+  55% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.05);
+    opacity: 0.4;
+  }
+}
+
+.skeleton {
+  display: inline-block;
+  height: 10px;
+  background: var(--ink-700);
+  animation: skeleton-fade 1.4s var(--ease) infinite;
+}
+
+@keyframes skeleton-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+/* ---------------------------------------------------------- misc helpers */
+
+.divider {
+  height: 1px;
+  background: var(--rule);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.push {
+  margin-left: auto;
+}
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
