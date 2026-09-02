@@ -59,7 +59,7 @@ export default function ServicesApp({ services }: { services: ServiceInfo[] }) {
         </table>
       </div>
 
-      <footer className="log-foot">
+      <footer className="foot">
         <span className="legend">
           <span><Lamp level="ok" /> active</span>
           <span><Lamp level="fail" /> not running</span>
