@@ -1,0 +1,475 @@
+/* ---------------------------------------------------------------------------
+   Shell
+
+   One plane, four regions, hairlines between them:
+
+     header  (machine identity | live trace | controls)
+     index   content            inspector
+     status bar
+
+   Nothing floats, nothing is rounded, nothing casts a shadow.
+   --------------------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-rows: var(--h-header) minmax(0, 1fr) var(--h-status);
+  height: 100dvh;
+  background: var(--ink-900);
+}
+
+/* --------------------------------------------------------------- header */
+
+.header {
+  position: relative;
+  z-index: var(--z-header);
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(120px, 1fr) minmax(0, auto);
+  align-items: stretch;
+  border-bottom: 1px solid var(--rule);
+  background: var(--ink-800);
+}
+
+.header-id {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0 var(--s4);
+  border-right: 1px solid var(--rule);
+}
+
+.mark {
+  color: var(--signal);
+}
+
+.header-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.header-name b {
+  font-family: var(--mono);
+  font-size: var(--t-lead);
+  font-weight: 500;
+  letter-spacing: var(--track-tight);
+}
+
+.header-name span {
+  display: flex;
+  gap: var(--s2);
+  color: var(--paper-3);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+}
+
+.header-name span i {
+  font-style: normal;
+  color: var(--paper-4);
+}
+
+/* The trace bleeds to the right edge of its cell: the header itself is the
+   instrument, so the app has no need for a row of metric cards. */
+.header-trace {
+  display: grid;
+  grid-template-columns: auto minmax(48px, 1fr);
+  align-items: stretch;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.trace-readout {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 0 var(--s4);
+}
+
+.trace-readout b {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: var(--track-tight);
+  line-height: 1;
+}
+
+.trace-readout b em {
+  color: var(--paper-3);
+  font-size: var(--t-fine);
+  font-style: normal;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0 var(--s3);
+  border-left: 1px solid var(--rule);
+}
+
+.link-state {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding-right: var(--s3);
+  border-right: 1px solid var(--rule);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+}
+
+.link-state span {
+  color: var(--paper-2);
+}
+
+.link-state em {
+  color: var(--paper-4);
+  font-style: normal;
+}
+
+/* ---------------------------------------------------------------- index */
+
+.shell-body {
+  display: grid;
+  grid-template-columns: var(--w-index) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.shell-body.has-inspector {
+  grid-template-columns: var(--w-index) minmax(0, 1fr) var(--w-inspector);
+}
+
+.index {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  border-right: 1px solid var(--rule);
+  background: var(--ink-800);
+}
+
+.index-list {
+  position: relative;
+  flex: 0 0 auto;
+  padding: var(--s3) 0;
+}
+
+/* One marker slides between entries instead of seven independent highlights. */
+.index-marker {
+  position: absolute;
+  left: 0;
+  top: var(--s3);
+  width: 2px;
+  height: 34px;
+  background: var(--signal);
+  transform: translateY(0);
+  transition: transform var(--t-base) var(--ease);
+}
+
+.index-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  height: 34px;
+  padding: 0 var(--s3) 0 var(--s4);
+  color: var(--paper-2);
+  text-align: left;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+
+.index-num {
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  transition: color var(--t-fast) var(--ease);
+}
+
+.index-name {
+  font-size: var(--t-data);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.index-count {
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+}
+
+.index-item:hover {
+  background: var(--ink-750);
+  color: var(--paper);
+}
+
+.index-item[aria-current="page"] {
+  background: var(--ink-700);
+  color: var(--paper);
+}
+
+.index-item[aria-current="page"] .index-num {
+  color: var(--signal);
+}
+
+.index-item[aria-current="page"] .index-count {
+  color: var(--paper-2);
+}
+
+.index-section {
+  padding: var(--s4) var(--s4) var(--s4);
+  border-top: 1px solid var(--rule);
+}
+
+.index-section > .label {
+  display: block;
+  margin-bottom: var(--s3);
+}
+
+.index-foot {
+  margin-top: auto;
+  padding: var(--s4);
+  border-top: 1px solid var(--rule);
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  line-height: 1.7;
+}
+
+/* Hops in the link path: a vertical rule joins them, each carries its own lamp. */
+.hops {
+  display: flex;
+  flex-direction: column;
+}
+
+.hop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s3);
+  padding: 5px 0;
+}
+
+.hop:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 17px;
+  bottom: -1px;
+  width: 1px;
+  background: var(--rule-hi);
+}
+
+.hop-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.hop-copy b {
+  color: var(--paper-2);
+  font-family: var(--mono);
+  font-size: var(--t-fine);
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hop-copy span {
+  color: var(--paper-4);
+  font-size: var(--t-micro);
+}
+
+/* -------------------------------------------------------------- content */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ink-900);
+}
+
+.content-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  animation: content-enter var(--t-base) var(--ease);
+}
+
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Shown in place of content when the tunnel is down. */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: 0 0 auto;
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--rule);
+  background: var(--lamp-warn-dim);
+  color: var(--text-warn);
+  font-size: var(--t-fine);
+}
+
+.banner p {
+  flex: 1;
+  color: var(--paper-2);
+}
+
+.banner b {
+  color: var(--paper);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------ inspector */
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  border-left: 1px solid var(--rule);
+  background: var(--ink-800);
+}
+
+.inspector-head {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 var(--s2) 0 var(--s4);
+  border-bottom: 1px solid var(--rule);
+  background: var(--ink-800);
+}
+
+.inspector-block {
+  padding: var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+
+.inspector-block > .label {
+  display: block;
+  margin-bottom: var(--s3);
+}
+
+.inspector-title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+
+.inspector-title b {
+  font-family: var(--mono);
+  font-size: var(--t-body);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.inspector-actions {
+  display: flex;
+  gap: var(--s2);
+  padding: var(--s4);
+}
+
+/* ----------------------------------------------------------- status bar */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: 0 var(--s3);
+  border-top: 1px solid var(--rule);
+  background: var(--ink-800);
+  color: var(--paper-4);
+  font-family: var(--mono);
+  font-size: var(--t-micro);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.status-bar b {
+  color: var(--paper-2);
+  font-weight: 400;
+}
+
+.status-bar .status-spacer {
+  flex: 1;
+}
+
+.status-bar .status-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  color: var(--paper-4);
+}
+
+@media (max-width: 1180px) {
+  .shell-body.has-inspector,
+  .shell-body {
+    grid-template-columns: var(--w-index) minmax(0, 1fr);
+  }
+
+  .inspector {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  :root {
+    --w-index: 58px;
+  }
+
+  .index-name,
+  .index-count,
+  .index-section,
+  .index-foot {
+    display: none;
+  }
+
+  .index-item {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    padding: 0;
+  }
+
+  .index-num {
+    font-size: var(--t-fine);
+  }
+
+  .header-id {
+    padding: 0 var(--s3);
+  }
+
+  .header-name span {
+    display: none;
+  }
+
+  .link-state span {
+    display: none;
+  }
+}
