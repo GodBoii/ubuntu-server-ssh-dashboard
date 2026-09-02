@@ -160,10 +160,11 @@
 }
 
 /* One marker slides between entries instead of seven independent highlights. */
+/* `offsetTop` already includes the list padding, so the marker starts at 0. */
 .index-marker {
   position: absolute;
   left: 0;
-  top: var(--s3);
+  top: 0;
   width: 2px;
   height: 34px;
   background: var(--signal);
