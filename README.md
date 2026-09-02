@@ -1,32 +1,38 @@
 # Ubuntu Control
 
-Ubuntu Control is a local management desktop for the remote `arun-H110` Ubuntu server. The browser connects only to a controller on this Windows laptop. The controller uses the existing `ssh ubuntu-server` profile, which reaches Ubuntu through Cloudflare Access and Cloudflare Tunnel.
-
-## Architecture
+A local console for the remote `arun-H110` Ubuntu server. The browser talks only to a controller running on this Windows laptop. That controller reuses the existing `ssh ubuntu-server` profile, which reaches Ubuntu through Cloudflare Access and a Cloudflare Tunnel.
 
 ```text
-Browser on 127.0.0.1:3000
-  -> local Node.js controller
-  -> Windows OpenSSH and cloudflared ProxyCommand
+browser on 127.0.0.1:3000
+  -> local Node controller
+  -> Windows OpenSSH + cloudflared ProxyCommand
   -> Cloudflare Access and Tunnel
   -> Ubuntu as arun
 ```
 
-Nothing in this project opens an inbound port on the Ubuntu server. The local HTTP server binds only to `127.0.0.1`, so other devices cannot access it over the laptop's Wi-Fi.
+Nothing here opens an inbound port on Ubuntu. The HTTP server binds to `127.0.0.1` only, so other devices on the laptop's Wi-Fi cannot reach it.
 
-## Applications
+## Sections
 
-- Overview: live CPU load, memory, disk, temperature, uptime and stack health.
-- Containers: inspect, filter, start, stop and restart Docker workloads.
-- Logs: follow live logs from any container.
-- Terminal: interactive SSH terminal powered by the existing Windows SSH configuration.
-- Files: browse and edit text files under `/home/arun/apps`.
-- Services: inspect SSH, Docker, containerd and cloudflared boot state.
-- Activity: local audit history for management actions.
+| # | Section | What it does |
+|---|---------|--------------|
+| 01 | Machine | Processor, memory and disk vitals, compose stacks, busiest processes |
+| 02 | Containers | Filterable table of every Docker workload, with a detail inspector |
+| 03 | Logs | Live `docker logs` stream with filter, level marks, pause and download |
+| 04 | Terminal | Interactive shell with GPU rendering, find, and automatic reattach |
+| 05 | Files | Browse and edit text files under `/home/arun/apps` |
+| 06 | Services | Read-only systemd state for ssh, cloudflared, docker, containerd |
+| 07 | Activity | Local ledger of every action this controller performed |
+
+## Design
+
+The interface is one continuous plane divided by hairlines. There are no cards, no panel radius and no shadows outside floating overlays. Hierarchy comes from type: mono for every piece of machine data, sans for prose and labels. Teal marks anything you can act on and nothing else; machine state is told by three lamps (moss, brass, rust) always paired with a word, so colour is never the only signal.
+
+The header doubles as the instrument. A stepped CPU trace bleeds to the right edge of it, which is why no screen needs a row of metric tiles.
+
+Tokens live in `src/styles/tokens.css`. The rest of the stylesheet is split by layer: `base`, `shell`, `parts`, `apps`, `overlays`.
 
 ## Run
-
-Production-style local run:
 
 ```powershell
 cd C:\Users\prajw\Downloads\Ubuntu-Control
@@ -34,42 +40,46 @@ npm run build
 npm start
 ```
 
-Open `http://127.0.0.1:3000`.
+Open `http://127.0.0.1:3000`. `start-control.cmd` does the same after a build.
 
-For development with automatic reload:
+For development with reload:
 
 ```powershell
-cd C:\Users\prajw\Downloads\Ubuntu-Control
 npm run dev
 ```
 
-You can also double-click `start-control.cmd` after a production build.
+## How the controller talks to Ubuntu
+
+The controller installs a helper at `/home/arun/.ubuntu-control/ops.py` and speaks JSON to it. The helper is not a daemon and never listens on a socket.
+
+It runs in two modes:
+
+- **Persistent.** `python3 ops.py --serve` reads newline-delimited JSON requests on stdin. The controller keeps two of these channels open over SSH, one for dashboard reads and one for state changes, so the Cloudflare Access handshake is not paid on every request. Mutations get their own channel because a 3 minute stack restart must not block a 1 second read.
+- **One-shot.** `python3 ops.py` answers a single request. The controller falls back to this automatically if a channel dies, so a dropped tunnel degrades to the slower path instead of failing.
+
+Reads are batched on the Ubuntu side: one `docker inspect` for every container rather than one per container, and one `systemctl show` for every unit rather than two calls each.
+
+The controller caches the overview for 1.5s and collapses concurrent callers onto a single request, so several tabs and a manual refresh still cost one round trip.
 
 ## Security boundaries
 
 - The controller never stores the Ubuntu sudo password.
 - Terminal sessions run as `arun`.
-- Files are restricted to `/home/arun/apps` and text files up to 2 MB.
-- Container and stack actions use validated names and fixed action sets.
-- State-changing HTTP requests require a random in-memory session token and an approved local origin.
-- Destructive UI actions require confirmation.
-- Actions are appended to `data/audit/actions.jsonl`.
-- Systemd changes remain read-only. Use Terminal and Ubuntu's normal sudo prompt for privileged work.
+- File access is limited to `/home/arun/apps`, text files, 2 MB maximum. Saves go through a temp file and keep the original permissions.
+- Container and stack actions use validated names and a fixed action set.
+- State-changing requests need a random in-memory session token and an approved local origin. WebSocket upgrades need the same token.
+- Destructive actions require confirmation that lists the concrete effects.
+- Actions are appended to `data/audit/actions.jsonl` with their duration and outcome.
+- systemd stays read-only. Privileged work goes through the Terminal and Ubuntu's own sudo prompt.
 
-Membership in Docker's group is effectively administrative access. Keep this application local and do not change its bind address to `0.0.0.0`.
+Membership in the `docker` group is effectively administrative access. Keep this application local and do not change the bind address to `0.0.0.0`.
 
-## Existing SSH dependency
+## Requirement
 
-The controller expects this command to work without a password:
+This must work without a password prompt:
 
 ```powershell
 ssh -o BatchMode=yes ubuntu-server "whoami"
 ```
 
-It also installs the structured operations helper at:
-
-```text
-/home/arun/.ubuntu-control/ops.py
-```
-
-The helper accepts JSON over SSH stdin. It is not a daemon and does not listen on a network port.
+If it stops working the console says so and keeps retrying with a backoff. It does not crash and it does not hide the failure.
