@@ -1,0 +1,103 @@
+/* ---------------------------------------------------------------------------
+   Design tokens
+
+   The console is a single instrument panel for one machine. Three rules hold
+   the system together:
+
+   1. Structure is drawn with hairlines, never with boxes. No panel radius, no
+      shadows outside floating overlays, no nested containers.
+   2. Type carries hierarchy. Mono for every piece of machine data (names,
+      numbers, paths, states, times), sans for prose and labels only.
+   3. Teal means "you can act on this" and nothing else. Machine state is told
+      by three equipment lamps: moss, brass, rust. The two vocabularies never
+      borrow each other's colours.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Warm-neutral greyscale. The ground is faintly warm so the cool accent
+     reads as a deliberate signal rather than part of the surface. */
+  --ink-900: #0c0b0a;   /* canvas */
+  --ink-850: #100f0e;   /* sunken: log surface, editor, inputs */
+  --ink-800: #151413;   /* raised: header, index, inspector, status bar */
+  --ink-750: #1b1a18;   /* hover */
+  --ink-700: #22211e;   /* pressed, selected fill */
+
+  --rule: #272522;      /* every structural line in the app */
+  --rule-hi: #34322e;   /* emphasised line: focused input, table head */
+
+  --paper: #ecebe8;     /* primary text          15.2:1 on canvas */
+  --paper-2: #a6a39d;   /* secondary text         7.9:1 */
+  --paper-3: #78756f;   /* micro labels           4.6:1, 10px minimum */
+  --paper-4: #4c4a45;   /* gutters, disabled, decorative only */
+
+  /* Interaction. Exactly one hue, used for links, focus, primary actions,
+     the current index entry, and the live trace. */
+  --signal: #4d9e90;
+  --signal-hi: #63b3a5;
+  --signal-dim: rgba(77, 158, 144, 0.13);
+  --signal-line: rgba(77, 158, 144, 0.34);
+  --signal-ink: #05100e;
+
+  /* Machine state. Painted-lamp colours, not neon. */
+  --lamp-ok: #7fa46a;
+  --lamp-warn: #cfa33e;
+  --lamp-fail: #c9584c;
+  --lamp-idle: #4c4a45;
+  --lamp-ok-dim: rgba(127, 164, 106, 0.14);
+  --lamp-warn-dim: rgba(207, 163, 62, 0.14);
+  --lamp-fail-dim: rgba(201, 88, 76, 0.16);
+  /* Lifted variants for when the colour has to carry text, not just a lamp. */
+  --text-warn: #dcb257;
+  --text-fail: #d9746a;
+
+  --sans: "Geist Variable", system-ui, "Segoe UI", sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
+
+  /* Type scale. Small and deliberate: this is a dense tool, not a page. */
+  --t-micro: 10px;   /* uppercase labels */
+  --t-fine: 11px;    /* table cells, notes */
+  --t-data: 12px;    /* the default size for machine data */
+  --t-body: 13px;    /* prose */
+  --t-lead: 15px;    /* section titles, machine name */
+  --t-title: 19px;   /* app titles */
+  --t-figure: 28px;  /* readouts */
+  --t-figure-lg: 38px;
+
+  --track-label: 0.14em; /* uppercase micro labels breathe */
+  --track-tight: -0.02em; /* large mono figures close up */
+
+  /* 4px grid. */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  /* Only controls get a radius, and barely. */
+  --radius: 3px;
+
+  --shadow-float: 0 24px 64px -20px rgba(0, 0, 0, 0.8);
+
+  /* Fixed shell dimensions, referenced by layout and by scroll offsets. */
+  --h-header: 56px;
+  --h-status: 26px;
+  --w-index: 212px;
+  --w-inspector: 300px;
+
+  --z-content: 1;
+  --z-sticky: 10;
+  --z-header: 20;
+  --z-float: 40;
+  --z-overlay: 60;
+  --z-toast: 70;
+
+  /* Motion is mechanical: no overshoot, no bounce, no blur. Things move the
+     shortest honest distance and stop. */
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 260ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-linear: linear;
+}
