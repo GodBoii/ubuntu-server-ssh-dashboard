@@ -2,6 +2,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { WebSocket } from "ws";
+import { config } from "./config.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(moduleDirectory, "..");
@@ -10,6 +11,13 @@ const helperSourcePath = path.join(moduleDirectory, "remote_ops.py");
 const helperDirectory = "/home/arun/.ubuntu-control";
 const helperRemotePath = `${helperDirectory}/ops.py`;
 export const sshHost = "ubuntu-server";
+
+function helperCommand(persistent: boolean): { executable: string; args: string[] } {
+  if (config.mode === "local") {
+    return { executable: "python3", args: [helperSourcePath, ...(persistent ? ["--serve"] : [])] };
+  }
+  return { executable: "ssh", args: [...sshOptions, sshHost, `python3 ${helperRemotePath}${persistent ? " --serve" : ""}`] };
+}
 
 /** Keepalives matter here: the hop runs through cloudflared, which drops idle channels. */
 const sshOptions = [
@@ -162,11 +170,8 @@ class RemoteChannel {
   #ensureChild(): ChildProcessWithoutNullStreams {
     const existing = this.#child;
     if (existing && existing.stdin.writable && existing.exitCode === null) return existing;
-    const child = spawn(
-      "ssh",
-      [...sshOptions, sshHost, `python3 ${helperRemotePath} --serve`],
-      { windowsHide: true },
-    );
+    const command = helperCommand(true);
+    const child = spawn(command.executable, command.args, { windowsHide: true });
     this.#child = child;
     this.#stdout = "";
     this.#stderrTail = "";
@@ -252,6 +257,7 @@ const controlChannel = new RemoteChannel("control channel");
 let installation: Promise<void> | null = null;
 
 async function installHelper(): Promise<void> {
+  if (config.mode === "local") return;
   await runOrThrow("ssh", [...sshOptions, sshHost, `mkdir -p ${helperDirectory}`], undefined, 30_000);
   await runOrThrow("scp", ["-q", helperSourcePath, `${sshHost}:${helperRemotePath}`], undefined, 45_000);
 }
@@ -269,9 +275,10 @@ export function ensureRemoteHelper(): Promise<void> {
 }
 
 async function remoteOneShot(action: string, payload: Record<string, unknown>, timeoutMs: number): Promise<unknown> {
+  const command = helperCommand(false);
   const result = await runProcess(
-    "ssh",
-    [...sshOptions, sshHost, `python3 ${helperRemotePath}`],
+    command.executable,
+    command.args,
     JSON.stringify({ action, payload }),
     timeoutMs,
   );
@@ -335,8 +342,10 @@ export function streamContainerLogs(socket: WebSocket, name: string, tail: numbe
   }
   const safeTail = Number.isFinite(tail) ? Math.min(Math.max(Math.trunc(tail), 20), 2000) : 300;
   const child = spawn(
-    "ssh",
-    [...sshOptions, sshHost, `docker logs --follow --tail ${safeTail} --timestamps ${name}`],
+    config.mode === "local" ? "docker" : "ssh",
+    config.mode === "local"
+      ? ["logs", "--follow", "--tail", String(safeTail), "--timestamps", name]
+      : [...sshOptions, sshHost, `docker logs --follow --tail ${safeTail} --timestamps ${name}`],
     { windowsHide: true },
   );
 
