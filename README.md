@@ -74,6 +74,47 @@ The controller caches the overview for 1.5s and collapses concurrent callers ont
 
 Membership in the `docker` group is effectively administrative access. Keep this application local and do not change the bind address to `0.0.0.0`.
 
+## Phone access from outside home
+
+Live URL: https://control.tradecognition.online. Choose **Cloudflare** on the login page and sign in as `prajwalghadge2005@gmail.com`. The dedicated `Ubuntu Control` Access application protects all paths. The `ubuntu-ssh` tunnel routes this hostname to `http://127.0.0.1:3000` and retains its existing SSH route.
+
+Run the full controller on Ubuntu. Vercel hosting for the frontend alone does not provide the controller's host commands or persistent terminal processes.
+
+```text
+phone browser -> Cloudflare Access -> Ubuntu tunnel -> 127.0.0.1:3000
+                                                    -> Python helper / Bash as arun
+```
+
+The Ubuntu deployment lives at `/home/arun/ubuntu-control` and uses the `ubuntu-control` systemd user service. It runs directly as `arun`, with the same Docker and filesystem permissions. The Windows default remains SSH mode. The laptop can be off when the Ubuntu deployment is in use.
+
+Configure `/home/arun/.config/ubuntu-control/environment` with mode `0600`:
+
+```ini
+UBUNTU_CONTROL_PUBLIC_ORIGIN=https://control.tradecognition.online
+UBUNTU_CONTROL_ACCESS_TEAM=summer-art-306d
+UBUNTU_CONTROL_ACCESS_AUD=<the new dashboard Access application's audience>
+```
+
+The service file in `deploy/ubuntu-control.service` sets `UBUNTU_CONTROL_MODE=local`. Copy it to `~/.config/systemd/user/ubuntu-control.service`, then use `systemctl --user daemon-reload` and `systemctl --user enable --now ubuntu-control`. User lingering must be enabled for startup at boot without a login.
+
+Create a dedicated Cloudflare Access self-hosted application covering the whole dashboard hostname, including all API and WebSocket paths. Allow only the owner's email. Add a published HTTP route to `127.0.0.1:3000` on the existing Ubuntu tunnel after Access protection is in place. Keep the existing SSH route unchanged. No Vercel project or additional tunnel process is needed.
+
+Public mode requires the Access issuer and audience. The controller verifies JWT signatures, issuer, audience, and expiration for every HTTP request and WebSocket upgrade. Missing or invalid authentication returns 403, including direct-origin requests. Origin and session-token checks still protect mutations and terminal upgrades. Never use a public route with the public-mode environment variables omitted.
+
+Service commands on Ubuntu:
+
+```sh
+systemctl --user status ubuntu-control
+systemctl --user restart ubuntu-control
+journalctl --user -u ubuntu-control -n 50
+```
+
+Open the dashboard hostname on your phone and sign in with the allowed email. Use Containers to restart a workload, or Terminal for `git pull` and builds. Commands run as `arun`. Ubuntu must stay powered and connected. Use a persistent shell such as tmux for long jobs if installed, because closing the terminal connection can terminate its shell.
+
+The deployment uses a private copy of Node at `runtime/node`. Its Linux native dependencies were built using the official `node:22-bullseye` image with a 2 GB memory limit and two CPUs. That temporary build container does not run the dashboard. Rebuild after dependency changes using a compatible Linux environment, then restart only `ubuntu-control`.
+
+To disable phone access, remove only the dashboard's published route and disable its service with `systemctl --user disable --now ubuntu-control`. Keep Access protection until its route is removed. This leaves the existing SSH route and application containers in place.
+
 ## Requirement
 
 This must work without a password prompt:
