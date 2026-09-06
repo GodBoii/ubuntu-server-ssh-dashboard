@@ -79,9 +79,9 @@ const lampForHop = { ok: "ok", wait: "live", warn: "warn", down: "fail" } as con
 function LinkPath({ link, host, latencyMs }: { link: HostLink; host: string; latencyMs: number | null }) {
   const [laptop, tunnel, remote] = hopStates(link);
   const hops = [
-    { key: "laptop", title: "this laptop", note: "127.0.0.1:3000", state: laptop },
+    { key: "laptop", title: "controller", note: "127.0.0.1:3000", state: laptop },
     { key: "tunnel", title: "cloudflare", note: "access + tunnel", state: tunnel },
-    { key: "host", title: host, note: latencyMs === null ? "ssh as arun" : `${formatLatency(latencyMs)} round trip`, state: remote },
+    { key: "host", title: host, note: latencyMs === null ? "runs as arun" : `${formatLatency(latencyMs)} round trip`, state: remote },
   ];
   return (
     <div className="hops">
@@ -428,6 +428,7 @@ export default function App() {
                 key={entry.id}
                 type="button"
                 className="index-item"
+                aria-label={entry.name}
                 aria-current={active === entry.id ? "page" : undefined}
                 onClick={() => setActive(entry.id)}
               >
@@ -537,7 +538,7 @@ function Offline({ message, onRetry }: { message: string; onRetry: () => void })
       <h2>no link to the host</h2>
       <p>{message}</p>
       <ol>
-        <li>Check <code>ssh -o BatchMode=yes ubuntu-server &quot;whoami&quot;</code> still answers in PowerShell.</li>
+        <li>For the Windows controller, check <code>ssh -o BatchMode=yes ubuntu-server &quot;whoami&quot;</code> in PowerShell. On Ubuntu, check <code>systemctl --user status ubuntu-control</code>.</li>
         <li>Confirm <code>cloudflared</code> is up on the host and your Access session has not expired.</li>
         <li>The controller keeps retrying with a backoff, so this clears itself once the tunnel is back.</li>
       </ol>
