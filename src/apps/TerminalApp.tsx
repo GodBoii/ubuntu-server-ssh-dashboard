@@ -306,7 +306,7 @@ export default function TerminalApp({
       <div className="term-surface" ref={hostRef} />
 
       <footer className="foot">
-        <span>runs as arun over the existing cloudflare tunnel</span>
+        <span>runs as arun on the Ubuntu host</span>
         <span className="push">sudo still prompts</span>
       </footer>
     </div>
