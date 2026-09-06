@@ -994,3 +994,14 @@
     padding: var(--s4);
   }
 }
+
+@media (max-width: 600px) {
+  body { overflow: hidden; }
+  .vital { grid-template-columns: 76px minmax(0, 1fr) 64px; gap: 10px; }
+  .app-title { flex-wrap: wrap; gap: 6px; }
+  .app-title p { white-space: normal; }
+  .app-tools { gap: 10px; }
+  .stack-line { grid-template-columns: 7px minmax(0, 1fr) 40px auto; gap: 10px; }
+  .tip > .tip-body { display: none; }
+  .grid .acts { opacity: 1; }
+}
