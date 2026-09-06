@@ -1,0 +1,19 @@
+[Unit]
+Description=Ubuntu Control dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ubuntu-control
+Environment=NODE_ENV=production
+Environment=UBUNTU_CONTROL_MODE=local
+Environment=PATH=%h/ubuntu-control/runtime:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=%h/.config/ubuntu-control/environment
+ExecStart=%h/ubuntu-control/runtime/node --import tsx server/index.ts
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+
+[Install]
+WantedBy=default.target
