@@ -2,11 +2,14 @@ import crypto from "node:crypto";
 import { existsSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
+import { homedir } from "node:os";
 import express, { type NextFunction, type Request, type Response } from "express";
 import * as pty from "node-pty";
 import { WebSocketServer, type WebSocket } from "ws";
 import { z } from "zod";
 import { recentAudit, recordAudit } from "./audit.js";
+import { config } from "./config.js";
+import { authorized } from "./access.js";
 import {
   closeRemoteChannels,
   ensureRemoteHelper,
@@ -25,6 +28,7 @@ const bindAddress = "127.0.0.1";
 const sessionToken = crypto.randomBytes(32).toString("hex");
 const startedAt = Date.now();
 const allowedOrigins = new Set(["http://127.0.0.1:3000", "http://localhost:3000"]);
+if (config.publicOrigin) allowedOrigins.add(config.publicOrigin);
 
 function log(event: string, fields: Record<string, unknown> = {}): void {
   const parts = Object.entries(fields).map(([key, value]) => `${key}=${typeof value === "string" ? value : JSON.stringify(value)}`);
@@ -37,6 +41,16 @@ function describe(error: unknown): string {
 
 const app = express();
 app.disable("x-powered-by");
+app.use((request, response, next) => {
+  response.setHeader("Cache-Control", "no-store");
+  void authorized(request).then((allowed) => {
+    if (!allowed) {
+      response.status(403).json({ error: "Cloudflare Access authentication required" });
+      return;
+    }
+    next();
+  }).catch(next);
+});
 app.use(express.json({ limit: "3mb" }));
 
 app.use((request, response, next) => {
@@ -53,7 +67,7 @@ app.use((request, response, next) => {
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data:",
         "font-src 'self' data:",
-        "connect-src 'self' ws://127.0.0.1:3000 ws://localhost:3000",
+        `connect-src 'self' ws://127.0.0.1:3000 ws://localhost:3000${config.publicOrigin ? ` ${config.publicOrigin.replace("https:", "wss:")}` : ""}`,
         "form-action 'none'",
         "base-uri 'self'",
         "object-src 'none'",
@@ -216,19 +230,26 @@ const terminalServer = new WebSocketServer({ noServer: true, maxPayload: 1_000_0
 const logsServer = new WebSocketServer({ noServer: true, maxPayload: 64_000 });
 
 server.on("upgrade", (request, socket, head) => {
-  const origin = request.headers.origin;
-  const url = new URL(request.url ?? "/", `http://${request.headers.host ?? bindAddress}`);
-  if (!origin || !allowedOrigins.has(origin) || url.searchParams.get("token") !== sessionToken) {
-    socket.destroy();
-    return;
-  }
-  if (url.pathname === "/ws/terminal") {
-    terminalServer.handleUpgrade(request, socket, head, (webSocket) => terminalServer.emit("connection", webSocket, request));
-  } else if (url.pathname === "/ws/logs") {
-    logsServer.handleUpgrade(request, socket, head, (webSocket) => logsServer.emit("connection", webSocket, request));
-  } else {
-    socket.destroy();
-  }
+  void authorized(request).then((allowed) => {
+    if (!allowed) {
+      socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+    const origin = request.headers.origin;
+    const url = new URL(request.url ?? "/", `http://${request.headers.host ?? bindAddress}`);
+    if (!origin || !allowedOrigins.has(origin) || url.searchParams.get("token") !== sessionToken) {
+      socket.destroy();
+      return;
+    }
+    if (url.pathname === "/ws/terminal") {
+      terminalServer.handleUpgrade(request, socket, head, (webSocket) => terminalServer.emit("connection", webSocket, request));
+    } else if (url.pathname === "/ws/logs") {
+      logsServer.handleUpgrade(request, socket, head, (webSocket) => logsServer.emit("connection", webSocket, request));
+    } else {
+      socket.destroy();
+    }
+  }).catch(() => socket.destroy());
 });
 
 /** Drops sockets whose browser tab vanished without a close frame. */
@@ -277,11 +298,11 @@ function readDimension(value: string | null, fallback: number, min: number, max:
 
 terminalServer.on("connection", (socket, request) => {
   const url = new URL(request.url ?? "/", `http://${request.headers.host ?? bindAddress}`);
-  const shell = pty.spawn(sshExecutable, [sshHost], {
+  const shell = pty.spawn(config.mode === "local" ? "/bin/bash" : sshExecutable, config.mode === "local" ? ["-l"] : [sshHost], {
     name: "xterm-256color",
     cols: readDimension(url.searchParams.get("cols"), 110, 20, 500),
     rows: readDimension(url.searchParams.get("rows"), 30, 5, 200),
-    cwd: process.env.USERPROFILE,
+    cwd: homedir(),
     env: { ...process.env, TERM: "xterm-256color" },
   });
 
