@@ -1,9 +1,9 @@
 /* ---------------------------------------------------------------------------
    Overlays
 
-   Flat sheets, square corners, one hairline, one tinted shadow. The tone of a
-   sheet is carried by a 2px rule down its left edge rather than a coloured
-   border or a tinted background.
+   Sheets float over a blurred veil. They arrive with a small rise and scale,
+   and leave faster than they came. Tone is carried by a 3px rule down the
+   left edge.
    --------------------------------------------------------------------------- */
 
 .veil {
@@ -11,14 +11,16 @@
   inset: 0;
   z-index: var(--z-overlay);
   display: grid;
-  background: rgba(8, 7, 6, 0.68);
+  background: rgba(4, 7, 9, 0.62);
+  backdrop-filter: blur(0px);
   opacity: 0;
-  transition: opacity var(--t-fast) var(--ease);
+  transition: opacity var(--t-fast) var(--ease-in), backdrop-filter var(--t-fast) var(--ease-in);
 }
 
 .veil[data-open="true"] {
   opacity: 1;
-  transition-duration: var(--t-base);
+  backdrop-filter: blur(6px) saturate(120%);
+  transition: opacity var(--t-base) var(--ease-out), backdrop-filter var(--t-slow) var(--ease-out);
 }
 
 .veil.centre {
@@ -29,29 +31,31 @@
 .veil.top {
   align-items: start;
   justify-items: center;
-  padding: 84px var(--s4) var(--s4);
+  padding: 88px var(--s4) var(--s4);
 }
 
 .sheet-surface {
+  overflow: hidden;
   border: 1px solid var(--rule-hi);
-  background: var(--ink-800);
-  box-shadow: var(--shadow-float);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+  box-shadow: var(--edge-light), var(--shadow-float);
   opacity: 0;
-  transform: translateY(6px);
-  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  transform: translateY(8px) scale(0.97);
+  transition: opacity var(--t-fast) var(--ease-in), transform var(--t-fast) var(--ease-in);
 }
 
 .sheet-surface[data-open="true"] {
   opacity: 1;
-  transform: translateY(0);
-  transition-duration: var(--t-base);
+  transform: none;
+  transition: opacity var(--t-base) var(--ease-out), transform var(--t-slow) var(--ease-spring);
 }
 
 .sheet-head {
   display: flex;
   align-items: center;
   gap: var(--s3);
-  min-height: 34px;
+  min-height: 46px;
   padding: 0 var(--s2) 0 var(--s4);
   border-bottom: 1px solid var(--rule);
 }
@@ -59,9 +63,13 @@
 .sheet-head h2 {
   flex: 1;
   min-width: 0;
-  font-family: var(--mono);
-  font-size: var(--t-data);
-  font-weight: 500;
+  font-family: var(--sans);
+  font-size: var(--t-body);
+  font-weight: 600;
+}
+
+.sheet-head h2::first-letter {
+  text-transform: uppercase;
 }
 
 /* --------------------------------------------------------------- palette */
@@ -69,9 +77,8 @@
 .palette {
   display: flex;
   flex-direction: column;
-  width: min(700px, 100%);
-  max-height: min(520px, 72dvh);
-  overflow: hidden;
+  width: min(680px, 100%);
+  max-height: min(540px, 72dvh);
 }
 
 .palette-input {
@@ -79,10 +86,10 @@
   align-items: center;
   gap: var(--s3);
   flex: 0 0 auto;
-  height: 44px;
+  height: 54px;
   padding: 0 var(--s3) 0 var(--s4);
   border-bottom: 1px solid var(--rule);
-  color: var(--paper-4);
+  color: var(--signal);
 }
 
 .palette-input input {
@@ -92,8 +99,8 @@
   outline: 0;
   background: none;
   color: var(--paper);
-  font-family: var(--mono);
-  font-size: var(--t-body);
+  font-family: var(--sans);
+  font-size: var(--t-lead);
 }
 
 .palette-input input::placeholder {
@@ -104,33 +111,41 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
+  padding: var(--s1) var(--s2) var(--s2);
 }
 
 .palette-group > .label {
   display: block;
-  padding: var(--s3) var(--s4) var(--s2);
-  border-bottom: 1px solid var(--rule);
-  background: var(--ink-850);
+  padding: var(--s3) var(--s2) 6px;
 }
 
 .palette-item {
+  position: relative;
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--s3);
   width: 100%;
-  min-height: 34px;
-  padding: var(--s1) var(--s3) var(--s1) var(--s4);
-  border-left: 2px solid transparent;
-  border-bottom: 1px solid var(--rule);
+  min-height: 40px;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--radius-md);
   color: var(--paper-2);
   text-align: left;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
 }
 
 .palette-item .palette-kind {
-  color: var(--paper-4);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--ink-850);
+  color: var(--paper-3);
   font-family: var(--mono);
-  font-size: var(--t-micro);
+  font-size: var(--t-fine);
+  transition: color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
 }
 
 .palette-copy {
@@ -143,30 +158,49 @@
 .palette-copy b {
   font-family: var(--mono);
   font-size: var(--t-data);
-  font-weight: 400;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .palette-copy span {
   color: var(--paper-4);
-  font-size: var(--t-micro);
+  font-size: var(--t-fine);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .palette-item[data-active="true"] {
-  border-left-color: var(--signal);
   background: var(--ink-700);
   color: var(--paper);
+  box-shadow: var(--edge-light);
+}
+
+.palette-item[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--signal);
 }
 
 .palette-item[data-active="true"] .palette-kind {
-  color: var(--signal);
+  border-color: var(--signal-line);
+  background: var(--signal-dim);
+  color: var(--signal-hi);
 }
 
-.palette-item.danger[data-active="true"] {
-  border-left-color: var(--lamp-fail);
+.palette-item.danger[data-active="true"]::before {
+  background: var(--lamp-fail);
+}
+
+.palette-item.danger[data-active="true"] .palette-kind {
+  border-color: rgba(224, 100, 90, 0.4);
+  background: var(--lamp-fail-dim);
+  color: var(--text-fail);
 }
 
 .palette-item.danger[data-active="true"] .palette-copy b {
@@ -178,7 +212,7 @@
   align-items: center;
   gap: var(--s4);
   flex: 0 0 auto;
-  height: 28px;
+  height: 34px;
   padding: 0 var(--s4);
   border-top: 1px solid var(--rule);
   background: var(--ink-850);
@@ -195,16 +229,30 @@
 /* ---------------------------------------------------------------- dialog */
 
 .ask {
-  width: min(460px, 100%);
-  border-left: 2px solid var(--signal);
+  position: relative;
+  width: min(480px, 100%);
 }
 
-.ask.danger {
-  border-left-color: var(--lamp-fail);
+.ask::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--signal);
+}
+
+.ask.danger::before {
+  background: var(--lamp-fail);
+}
+
+.ask.danger .sheet-head {
+  background: linear-gradient(90deg, var(--lamp-fail-dim), transparent 70%);
 }
 
 .ask-body {
-  padding: var(--s4);
+  padding: var(--s4) var(--s5) var(--s4) var(--s4);
 }
 
 .ask-body > p {
@@ -216,25 +264,36 @@
 .ask-effects {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   margin-top: var(--s4);
-  border-top: 1px solid var(--rule);
 }
 
 .ask-effects li {
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr);
+  grid-template-columns: 16px minmax(0, 1fr);
   gap: var(--s2);
-  padding: 6px 0;
-  border-bottom: 1px solid var(--rule);
-  color: var(--paper-3);
+  padding: 7px 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--paper-2);
   font-family: var(--mono);
   font-size: var(--t-fine);
   line-height: 1.5;
+  animation: rise var(--t-slow) var(--ease-out) backwards;
 }
+
+.ask-effects li:nth-child(1) { animation-delay: 80ms; }
+.ask-effects li:nth-child(2) { animation-delay: 140ms; }
+.ask-effects li:nth-child(n+3) { animation-delay: 200ms; }
 
 .ask-effects li::before {
   content: "\2192";
-  color: var(--paper-4);
+  color: var(--signal);
+}
+
+.ask.danger .ask-effects li::before {
+  color: var(--text-fail);
 }
 
 .ask-foot {
@@ -249,12 +308,12 @@
 /* ------------------------------------------------------------- shortcuts */
 
 .keys {
-  width: min(560px, 100%);
+  width: min(580px, 100%);
 }
 
 .keys-body {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
 .keys-body section {
@@ -271,7 +330,7 @@
   color: var(--paper-3);
   font-family: var(--sans);
   font-size: var(--t-micro);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: var(--track-label);
   text-transform: uppercase;
 }
@@ -285,8 +344,8 @@
   display: flex;
   align-items: center;
   gap: var(--s3);
-  padding: 5px 0;
-  border-bottom: 1px solid var(--rule);
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--rule);
 }
 
 .keys-body dl > div:last-child {
@@ -297,7 +356,7 @@
   display: flex;
   gap: 3px;
   flex: 0 0 auto;
-  min-width: 86px;
+  min-width: 90px;
 }
 
 .keys-body dd {
@@ -307,13 +366,11 @@
 
 /* ---------------------------------------------------------------- toasts */
 
-/* Bottom left, beside the status bar, because that is where this app already
-   reports on itself. */
 .toasts {
   position: fixed;
   z-index: var(--z-toast);
-  left: var(--s3);
-  bottom: calc(var(--h-status) + var(--s3));
+  right: var(--s4);
+  bottom: calc(var(--h-status) + var(--s4));
   display: flex;
   flex-direction: column-reverse;
   gap: var(--s2);
@@ -322,25 +379,46 @@
 }
 
 .toast {
+  --tone: var(--signal);
+  position: relative;
   display: grid;
-  grid-template-columns: 7px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--s3);
-  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  padding: 10px var(--s2) 10px var(--s3);
+  overflow: hidden;
   border: 1px solid var(--rule-hi);
-  border-left-width: 2px;
-  background: var(--ink-800);
-  box-shadow: var(--shadow-float);
+  border-radius: var(--radius-md);
+  background: rgba(17, 22, 26, 0.94);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--edge-light), var(--shadow-float);
   pointer-events: auto;
-  opacity: 0;
-  transform: translateX(-8px);
-  transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+  animation: toast-in var(--t-slow) var(--ease-spring);
+  transition: opacity var(--t-base) var(--ease-in), transform var(--t-base) var(--ease-in);
 }
 
-.toast[data-open="true"] {
-  opacity: 1;
-  transform: translateX(0);
-  transition-duration: var(--t-base);
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.toast[data-open="false"] {
+  opacity: 0;
+  transform: translateX(16px) scale(0.98);
+}
+
+.toast.ok { --tone: var(--lamp-ok); }
+.toast.fail { --tone: var(--lamp-fail); }
+.toast.info { --tone: var(--signal); }
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tone) 16%, transparent);
+  color: var(--tone);
 }
 
 .toast p {
@@ -351,16 +429,25 @@
   overflow-wrap: anywhere;
 }
 
-.toast.ok {
-  border-left-color: var(--lamp-ok);
+/* Hold times match useToasts: success 3.6s, info 4.2s, error 6.5s. */
+.toast-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--tone);
+  opacity: 0.7;
+  transform-origin: left center;
+  animation: drain 3.6s linear forwards;
 }
 
-.toast.fail {
-  border-left-color: var(--lamp-fail);
-}
+.toast.info .toast-timer { animation-duration: 4.2s; }
+.toast.fail .toast-timer { animation-duration: 6.5s; }
 
-.toast.info {
-  border-left-color: var(--signal);
+@keyframes drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 @media (max-width: 820px) {
@@ -383,17 +470,26 @@
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 
-  .lamp.live,
+  .lamp.live::after,
   .skeleton,
-  .busy::after {
+  .busy-dots i,
+  .busy-rows i,
+  .hop.ok::after,
+  .mark.live .mark-bar,
+  .trace-head,
+  .offline-art .ring,
+  .spin,
+  .tail-jump svg {
     animation: none !important;
   }
 
-  .busy::after {
-    transform: scaleX(1);
+  /* The toast timer still has to show how long is left, without movement. */
+  .toast-timer {
+    display: none;
   }
 }
