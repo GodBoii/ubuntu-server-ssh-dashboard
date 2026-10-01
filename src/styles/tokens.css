@@ -1,70 +1,74 @@
 /* ---------------------------------------------------------------------------
    Design tokens
 
-   The console is a single instrument panel for one machine. Three rules hold
-   the system together:
+   A dark operations console for one machine. The rules that hold it together:
 
-   1. Structure is drawn with hairlines, never with boxes. No panel radius, no
-      shadows outside floating overlays, no nested containers.
-   2. Type carries hierarchy. Mono for every piece of machine data (names,
-      numbers, paths, states, times), sans for prose and labels only.
-   3. Teal means "you can act on this" and nothing else. Machine state is told
-      by three equipment lamps: moss, brass, rust. The two vocabularies never
-      borrow each other's colours.
+   1. One cool-neutral grey family. Surfaces step up in lightness as they get
+      closer to the operator: canvas, panel, raised, hover, selected.
+   2. Mono for every piece of machine data (names, numbers, paths, states,
+      times), sans for prose and labels.
+   3. Teal means "you can act on this": links, focus, primary actions, the
+      current section and the live trace. Machine state uses three lamps
+      (green, amber, red) that are always paired with a word.
    --------------------------------------------------------------------------- */
 
 :root {
-  /* Warm-neutral greyscale. The ground is faintly warm so the cool accent
-     reads as a deliberate signal rather than part of the surface. */
-  --ink-900: #0c0b0a;   /* canvas */
-  --ink-850: #100f0e;   /* sunken: log surface, editor, inputs */
-  --ink-800: #151413;   /* raised: header, index, inspector, status bar */
-  --ink-750: #1b1a18;   /* hover */
-  --ink-700: #22211e;   /* pressed, selected fill */
+  color-scheme: dark;
 
-  --rule: #272522;      /* every structural line in the app */
-  --rule-hi: #34322e;   /* emphasised line: focused input, table head */
+  /* Cool-neutral greys, faintly tinted toward the accent so the teal reads
+     as part of the same light rather than a sticker on top. */
+  --ink-950: #07090b;   /* page canvas behind panels */
+  --ink-900: #0a0d10;   /* panel body */
+  --ink-850: #0d1114;   /* sunken: log surface, editor, inputs, table heads */
+  --ink-800: #11161a;   /* raised: header, sidebar, inspector */
+  --ink-750: #161c21;   /* hover */
+  --ink-700: #1b2228;   /* pressed, selected fill */
+  --ink-650: #222a31;   /* strong fill: tracks, tally off */
 
-  --paper: #ecebe8;     /* primary text          15.2:1 on canvas */
-  --paper-2: #a6a39d;   /* secondary text         7.9:1 */
-  --paper-3: #78756f;   /* micro labels           4.6:1, 10px minimum */
-  --paper-4: #4c4a45;   /* gutters, disabled, decorative only */
+  --rule: rgba(214, 232, 240, 0.07);     /* every structural line */
+  --rule-hi: rgba(214, 232, 240, 0.12);  /* focused input, table head, overlays */
+  --rule-glow: rgba(214, 232, 240, 0.18);
 
-  /* Interaction. Exactly one hue, used for links, focus, primary actions,
-     the current index entry, and the live trace. */
-  --signal: #4d9e90;
-  --signal-hi: #63b3a5;
-  --signal-dim: rgba(77, 158, 144, 0.13);
-  --signal-line: rgba(77, 158, 144, 0.34);
-  --signal-ink: #05100e;
+  --paper: #e6ebee;     /* primary text          15.6:1 on panel */
+  --paper-2: #a4adb4;   /* secondary text         8.1:1 */
+  --paper-3: #7c868e;   /* micro labels           4.9:1 */
+  --paper-4: #4f5960;   /* gutters, disabled, decorative only */
 
-  /* Machine state. Painted-lamp colours, not neon. */
-  --lamp-ok: #7fa46a;
-  --lamp-warn: #cfa33e;
-  --lamp-fail: #c9584c;
-  --lamp-idle: #4c4a45;
-  --lamp-ok-dim: rgba(127, 164, 106, 0.14);
-  --lamp-warn-dim: rgba(207, 163, 62, 0.14);
-  --lamp-fail-dim: rgba(201, 88, 76, 0.16);
-  /* Lifted variants for when the colour has to carry text, not just a lamp. */
-  --text-warn: #dcb257;
-  --text-fail: #d9746a;
+  /* Interaction. One hue. */
+  --signal: #3fb8a0;
+  --signal-hi: #66d3bd;
+  --signal-dim: rgba(63, 184, 160, 0.12);
+  --signal-soft: rgba(63, 184, 160, 0.2);
+  --signal-line: rgba(63, 184, 160, 0.36);
+  --signal-glow: rgba(63, 184, 160, 0.45);
+  --signal-ink: #03120e;
+
+  /* Machine state. */
+  --lamp-ok: #6fbf73;
+  --lamp-warn: #deae47;
+  --lamp-fail: #e0645a;
+  --lamp-idle: #4f5960;
+  --lamp-ok-dim: rgba(111, 191, 115, 0.16);
+  --lamp-warn-dim: rgba(222, 174, 71, 0.15);
+  --lamp-fail-dim: rgba(224, 100, 90, 0.16);
+  --text-warn: #e8c06a;
+  --text-fail: #ee8a80;
 
   --sans: "Geist Variable", system-ui, "Segoe UI", sans-serif;
   --mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
 
-  /* Type scale. Small and deliberate: this is a dense tool, not a page. */
-  --t-micro: 10px;   /* uppercase labels */
-  --t-fine: 11px;    /* table cells, notes */
-  --t-data: 12px;    /* the default size for machine data */
-  --t-body: 13px;    /* prose */
-  --t-lead: 15px;    /* section titles, machine name */
-  --t-title: 19px;   /* app titles */
-  --t-figure: 28px;  /* readouts */
+  /* Type scale. Dense tool, small steps. */
+  --t-micro: 10px;
+  --t-fine: 11px;
+  --t-data: 12px;
+  --t-body: 13px;
+  --t-lead: 15px;
+  --t-title: 19px;
+  --t-figure: 26px;
   --t-figure-lg: 38px;
 
-  --track-label: 0.14em; /* uppercase micro labels breathe */
-  --track-tight: -0.02em; /* large mono figures close up */
+  --track-label: 0.12em;
+  --track-tight: -0.02em;
 
   /* 4px grid. */
   --s1: 4px;
@@ -75,16 +79,26 @@
   --s6: 32px;
   --s7: 48px;
 
-  /* Only controls get a radius, and barely. */
-  --radius: 3px;
+  /* Radius by level: controls are tight, panels are softer, overlays softest. */
+  --radius-xs: 4px;
+  --radius: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
 
-  --shadow-float: 0 24px 64px -20px rgba(0, 0, 0, 0.8);
+  /* Shadows carry the canvas hue instead of pure black. A single light
+     source from above: inner highlight on top, soft drop below. */
+  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --shadow-panel: 0 1px 0 rgba(0, 0, 0, 0.35), 0 12px 32px -18px rgba(2, 10, 12, 0.85);
+  --shadow-float: 0 28px 70px -24px rgba(1, 8, 10, 0.9), 0 0 0 1px rgba(214, 232, 240, 0.06);
+  --shadow-pop: 0 10px 30px -12px rgba(1, 8, 10, 0.85);
 
-  /* Fixed shell dimensions, referenced by layout and by scroll offsets. */
-  --h-header: 56px;
-  --h-status: 26px;
-  --w-index: 212px;
-  --w-inspector: 300px;
+  /* Fixed shell dimensions. */
+  --h-header: 60px;
+  --h-status: 28px;
+  --w-index: 228px;
+  --w-inspector: 312px;
+  --gutter: 10px;
 
   --z-content: 1;
   --z-sticky: 10;
@@ -92,12 +106,17 @@
   --z-float: 40;
   --z-overlay: 60;
   --z-toast: 70;
+  --z-grain: 80;
 
-  /* Motion is mechanical: no overshoot, no bounce, no blur. Things move the
-     shortest honest distance and stop. */
-  --t-fast: 120ms;
-  --t-base: 180ms;
-  --t-slow: 260ms;
+  /* Motion. Short and settled: things arrive with a little presence and
+     leave faster than they came. */
+  --t-fast: 140ms;
+  --t-base: 220ms;
+  --t-slow: 360ms;
+  --t-page: 320ms;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
   --ease-linear: linear;
 }
