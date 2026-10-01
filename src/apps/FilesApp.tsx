@@ -232,6 +232,7 @@ export default function FilesApp({ notify }: { notify: (message: string, tone?: 
           )}
           {tree.kind === "ready" && entries.length === 0 && (
             <Empty
+              icon={<Folder size={18} strokeWidth={1.75} />}
               title={query.trim() ? "no match" : "empty"}
               note={query.trim() ? `Nothing here contains "${query.trim()}".` : "This folder has no files or subfolders."}
             />
@@ -255,6 +256,7 @@ export default function FilesApp({ notify }: { notify: (message: string, tone?: 
       <section className="pane" aria-label="File editor">
         {editor.kind === "idle" && (
           <Empty
+            icon={<FileCode2 size={18} strokeWidth={1.75} />}
             title="pick a text file"
             note="Files under /home/arun/apps up to 2 MB open here. Saving writes atomically through a temp file and keeps the original permissions."
           />
