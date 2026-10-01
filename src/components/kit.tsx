@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ComponentPropsWithRef, type ReactNode } from "react";
+import { Inbox } from "lucide-react";
 import { clampPercent } from "../lib/format";
 
 export type LampLevel = "ok" | "warn" | "fail" | "idle" | "live";
@@ -22,10 +23,11 @@ export function Label({ children }: { children: ReactNode }) {
   return <span className="label">{children}</span>;
 }
 
-/** Section heading: a label with a hairline running off to the right edge. */
-export function Section({ title, aside }: { title: string; aside?: ReactNode }) {
+/** Section heading: an optional icon, a label, and a hairline running off to the right edge. */
+export function Section({ title, aside, icon }: { title: string; aside?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="section">
+      {icon && <span className="section-icon" aria-hidden="true">{icon}</span>}
       <span className="label">{title}</span>
       {aside && <span className="push">{aside}</span>}
     </div>
@@ -61,6 +63,28 @@ export function Bar({ percent, tone = "signal", label }: { percent: number; tone
     >
       <i style={{ transform: `scaleX(${value / 100})` }} />
     </div>
+  );
+}
+
+const gaugeRadius = 22;
+const gaugeLength = 2 * Math.PI * gaugeRadius;
+
+/** Ring reading for a percentage. Decorative: the figure beside it carries the value. */
+export function Gauge({ percent, tone = "signal" }: { percent: number; tone?: BarTone }) {
+  const value = clampPercent(percent);
+  return (
+    <svg className={`gauge ${tone}`} viewBox="0 0 56 56" width="56" height="56" aria-hidden="true">
+      <circle className="gauge-track" cx="28" cy="28" r={gaugeRadius} />
+      <circle
+        className="gauge-fill"
+        cx="28"
+        cy="28"
+        r={gaugeRadius}
+        strokeDasharray={gaugeLength}
+        strokeDashoffset={gaugeLength * (1 - value / 100)}
+      />
+      <text x="28" y="31.5" textAnchor="middle">{Math.round(value)}</text>
+    </svg>
   );
 }
 
@@ -262,9 +286,10 @@ export function Spec({ rows }: { rows: SpecRow[] }) {
   );
 }
 
-export function Empty({ title, note, action }: { title: string; note: string; action?: ReactNode }) {
+export function Empty({ title, note, action, icon }: { title: string; note: string; action?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="empty">
+      <span className="empty-icon" aria-hidden="true">{icon ?? <Inbox size={18} strokeWidth={1.75} />}</span>
       <b>{title}</b>
       <p>{note}</p>
       {action}
@@ -275,7 +300,9 @@ export function Empty({ title, note, action }: { title: string; note: string; ac
 export function Busy({ label = "reading the ubuntu host" }: { label?: string }) {
   return (
     <div className="busy" role="status">
+      <span className="busy-dots" aria-hidden="true"><i /><i /><i /></span>
       <span>{label}</span>
+      <span className="busy-rows" aria-hidden="true"><i /><i /><i /><i /></span>
     </div>
   );
 }
