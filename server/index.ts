@@ -212,8 +212,19 @@ app.post("/api/directory", asyncRoute(async (request, response) => {
 
 if (production) {
   const distDirectory = path.join(projectRoot, "dist");
+  // Hashed bundles never change under the same name, so they can be cached for good.
+  app.use("/assets", express.static(path.join(distDirectory, "assets"), { index: false, maxAge: "1y", immutable: true }));
+  // A chunk that no longer exists after a rebuild must 404. Answering with
+  // index.html makes the browser reject it as a module, which used to blank the app.
+  app.use("/assets", (_request, response) => {
+    response.status(404).type("text/plain").send("Not found");
+  });
   app.use(express.static(distDirectory, { index: false, maxAge: "1h" }));
-  app.get("/{*path}", (_request, response) => response.sendFile(path.join(distDirectory, "index.html")));
+  // index.html is always revalidated so a rebuild reaches open tabs on the next load.
+  app.get("/{*path}", (_request, response) => {
+    response.setHeader("Cache-Control", "no-cache");
+    response.sendFile(path.join(distDirectory, "index.html"));
+  });
 }
 
 app.use((error: unknown, _request: Request, response: Response, _next: NextFunction) => {
