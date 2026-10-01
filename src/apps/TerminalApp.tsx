@@ -142,7 +142,13 @@ export default function TerminalApp({
     return () => {
       observer.disconnect();
       if (frame !== 0) cancelAnimationFrame(frame);
-      terminal.dispose();
+      // The WebGL addon can throw while tearing down a lost GPU context. A throw
+      // here would abort React's commit and blank the next section.
+      try {
+        terminal.dispose();
+      } catch (error) {
+        console.warn("[ubuntu-control] terminal dispose failed", error);
+      }
       terminalRef.current = null;
       fitRef.current = null;
       searchRef.current = null;
