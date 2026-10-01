@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { History, Search, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Btn, Choices, Empty, Field, Lamp, type Choice } from "../components/kit";
 import { formatClock, formatLatency, formatTimestamp, humanize } from "../lib/format";
@@ -51,6 +51,7 @@ export default function ActivityApp({ entries }: { entries: AuditEntry[] }) {
     <div className="app">
       <header className="app-head">
         <div className="app-title">
+          <span className="app-icon" aria-hidden="true"><History size={16} strokeWidth={1.75} /></span>
           <h1>Activity</h1>
           <p>{counts.all} recorded{counts.failure > 0 ? ` · ${counts.failure} failed` : ""}</p>
         </div>
@@ -63,6 +64,7 @@ export default function ActivityApp({ entries }: { entries: AuditEntry[] }) {
       <div className="ledger">
         {rows.length === 0 ? (
           <Empty
+            icon={filtered ? <SearchX size={18} strokeWidth={1.75} /> : <History size={18} strokeWidth={1.75} />}
             title={filtered ? "nothing matches" : "no actions yet"}
             note={filtered
               ? "Nothing in the local ledger matches this filter."
