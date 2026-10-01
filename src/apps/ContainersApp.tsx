@@ -1,4 +1,4 @@
-import { CircleStop, Play, RotateCw, ScrollText, Search } from "lucide-react";
+import { Boxes, CircleStop, Play, RotateCw, ScrollText, Search, SearchX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Act, Btn, Choices, Empty, Field, Lamp, Picker, State, type Choice } from "../components/kit";
 import { formatRelativeTime } from "../lib/format";
@@ -94,6 +94,7 @@ export default function ContainersApp({
     <div className="app">
       <header className="app-head">
         <div className="app-title">
+          <span className="app-icon" aria-hidden="true"><Boxes size={16} strokeWidth={1.75} /></span>
           <h1>Containers</h1>
           <p>{counts.running}/{counts.all} up{counts.attention > 0 ? ` · ${counts.attention} unhealthy` : ""}</p>
         </div>
@@ -114,6 +115,7 @@ export default function ContainersApp({
       <div className="scroller">
         {rows.length === 0 ? (
           <Empty
+            icon={filtered ? <SearchX size={18} strokeWidth={1.75} /> : <Boxes size={18} strokeWidth={1.75} />}
             title={filtered ? "nothing matches" : "no containers"}
             note={filtered
               ? "Docker reported containers, but none of them pass the current state, project and search filters."
