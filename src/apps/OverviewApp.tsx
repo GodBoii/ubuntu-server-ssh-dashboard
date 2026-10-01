@@ -1,5 +1,20 @@
-import { Play, Power, RotateCw, TriangleAlert } from "lucide-react";
-import { Act, Bar, Figure, Label, Lamp, Section, Spec, toneForLoad } from "../components/kit";
+import {
+  Activity,
+  ArrowUpRight,
+  Cpu,
+  Gauge as GaugeIcon,
+  HardDrive,
+  Layers,
+  LockKeyhole,
+  MemoryStick,
+  Play,
+  Power,
+  RotateCw,
+  Server,
+  TriangleAlert,
+  type LucideIcon,
+} from "lucide-react";
+import { Act, Bar, Figure, Gauge, Label, Lamp, Section, Spec, toneForLoad } from "../components/kit";
 import { formatBytes, formatDuration, formatPercent, formatRate, humanize } from "../lib/format";
 import { summarize } from "../lib/telemetry";
 import type { AppId, Overview, StackInfo, Telemetry } from "../types";
@@ -8,24 +23,35 @@ type StackAction = "start" | "stop" | "restart";
 
 function Vital({
   name,
+  icon: Icon,
   value,
   unit,
   percent,
   detail,
 }: {
   name: string;
+  icon: LucideIcon;
   value: string;
   unit?: string;
   percent: number;
   detail: string;
 }) {
+  const tone = toneForLoad(percent);
   return (
-    <div className="vital">
-      <Label>{name}</Label>
-      <Figure value={value} unit={unit} size="md" />
-      <Bar percent={percent} tone={toneForLoad(percent)} label={`${name} usage`} />
+    <article className={`vital ${tone}`}>
+      <header className="vital-head">
+        <span className="vital-icon" aria-hidden="true">
+          <Icon size={15} strokeWidth={1.75} />
+        </span>
+        <Label>{name}</Label>
+      </header>
+      <div className="vital-reading">
+        <Figure value={value} unit={unit} size="md" />
+        <Gauge percent={percent} tone={tone} />
+      </div>
+      <Bar percent={percent} tone={tone} label={`${name} usage`} />
       <span className="vital-detail">{detail}</span>
-    </div>
+    </article>
   );
 }
 
@@ -85,6 +111,14 @@ export default function OverviewApp({
 
   return (
     <div className="sheet">
+      <header className="sheet-title">
+        <span className="app-icon" aria-hidden="true"><GaugeIcon size={16} strokeWidth={1.75} /></span>
+        <div>
+          <h1>Machine</h1>
+          <p>{overview.host} · {summary.running}/{summary.total} containers up · {summary.healthyStacks}/{summary.totalStacks} stacks healthy</p>
+        </div>
+      </header>
+
       {(summary.unhealthy > 0 || summary.inactiveServices.length > 0) && (
         <div className="banner" role="status">
           <TriangleAlert size={14} aria-hidden="true" />
@@ -92,38 +126,43 @@ export default function OverviewApp({
             {summary.unhealthy > 0 && `${summary.unhealthy} container${summary.unhealthy === 1 ? "" : "s"} reporting unhealthy. `}
             {summary.inactiveServices.length > 0 && `Units not active: ${summary.inactiveServices.join(", ")}.`}
           </p>
-          <button type="button" className="link" onClick={() => onOpenApp(summary.unhealthy > 0 ? "containers" : "services")}>
-            open
+          <button type="button" className="link with-icon" onClick={() => onOpenApp(summary.unhealthy > 0 ? "containers" : "services")}>
+            open <ArrowUpRight size={12} aria-hidden="true" />
           </button>
         </div>
       )}
 
-      <Vital
-        name="Processor"
-        value={formatPercent(cpuPercent)}
-        percent={cpuPercent}
-        detail={`${overview.cpuCount} threads · load ${overview.load.map((value) => value.toFixed(2)).join(" ")}`}
-      />
-      <Vital
-        name="Memory"
-        value={formatBytes(overview.memory.used)}
-        unit={`of ${formatBytes(overview.memory.total)}`}
-        percent={memoryPercent}
-        detail={overview.memory.swapTotal > 0
-          ? `${formatBytes(overview.memory.available)} available · swap ${formatBytes(overview.memory.swapUsed)}`
-          : `${formatBytes(overview.memory.available)} available`}
-      />
-      <Vital
-        name="Root disk"
-        value={formatBytes(overview.disk.used)}
-        unit={`of ${formatBytes(overview.disk.total)}`}
-        percent={diskPercent}
-        detail={`${formatBytes(overview.disk.available)} free`}
-      />
+      <div className="vitals">
+        <Vital
+          name="Processor"
+          icon={Cpu}
+          value={formatPercent(cpuPercent)}
+          percent={cpuPercent}
+          detail={`${overview.cpuCount} threads · load ${overview.load.map((value) => value.toFixed(2)).join(" ")}`}
+        />
+        <Vital
+          name="Memory"
+          icon={MemoryStick}
+          value={formatBytes(overview.memory.used)}
+          unit={`of ${formatBytes(overview.memory.total)}`}
+          percent={memoryPercent}
+          detail={overview.memory.swapTotal > 0
+            ? `${formatBytes(overview.memory.available)} available · swap ${formatBytes(overview.memory.swapUsed)}`
+            : `${formatBytes(overview.memory.available)} available`}
+        />
+        <Vital
+          name="Root disk"
+          icon={HardDrive}
+          value={formatBytes(overview.disk.used)}
+          unit={`of ${formatBytes(overview.disk.total)}`}
+          percent={diskPercent}
+          detail={`${formatBytes(overview.disk.available)} free`}
+        />
+      </div>
 
       <div className="split">
-        <section>
-          <Section title="Machine" />
+        <section className="panel">
+          <Section title="Machine" icon={<Server size={13} strokeWidth={1.75} />} />
           <Spec
             rows={[
               { term: "Kernel", value: overview.kernel },
@@ -143,8 +182,8 @@ export default function OverviewApp({
           />
         </section>
 
-        <section>
-          <Section title="Busiest processes" aside="cpu share" />
+        <section className="panel">
+          <Section title="Busiest processes" aside="cpu share" icon={<Activity size={13} strokeWidth={1.75} />} />
           {overview.processes.length === 0 ? (
             <p className="note">This host&apos;s helper does not report process data. Update the controller to refresh ops.py.</p>
           ) : (
@@ -154,6 +193,7 @@ export default function OverviewApp({
                   <b title={process.command}>{process.command}</b>
                   <span>{process.pid}</span>
                   <u>{process.cpu.toFixed(1)}%</u>
+                  <i className="proc-share" aria-hidden="true" style={{ transform: `scaleX(${Math.min(process.cpu, 100) / 100})` }} />
                 </div>
               ))}
             </div>
@@ -161,15 +201,19 @@ export default function OverviewApp({
         </section>
       </div>
 
-      <section className="block">
-        <Section title="Compose stacks" aside={`${summary.healthyStacks} of ${summary.totalStacks} healthy`} />
+      <section className="block panel">
+        <Section
+          title="Compose stacks"
+          aside={`${summary.healthyStacks} of ${summary.totalStacks} healthy`}
+          icon={<Layers size={13} strokeWidth={1.75} />}
+        />
         <div className="stack">
           {overview.stacks.map((stack) => <StackLine key={stack.id} stack={stack} onAction={onStackAction} />)}
         </div>
       </section>
 
-      <section className="block">
-        <Section title="Boundaries" />
+      <section className="block panel">
+        <Section title="Boundaries" icon={<LockKeyhole size={13} strokeWidth={1.75} />} />
         <ul className="note stack">
           <li>The controller binds to 127.0.0.1 only. Nothing on the Wi-Fi can reach it.</li>
           <li>File access is limited to /home/arun/apps and text files up to 2 MB.</li>
