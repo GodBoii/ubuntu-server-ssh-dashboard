@@ -1,4 +1,4 @@
-import { ArrowDown, Download, Eraser, Pause, Play, RotateCcw, Search, WrapText } from "lucide-react";
+import { ArrowDown, Download, Eraser, Pause, Play, Radio, RotateCcw, ScrollText, Search, SearchX, WrapText } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Act, Empty, Field, Lamp, Picker } from "../components/kit";
 import type { LogLine } from "../hooks/useLogStream";
@@ -144,6 +144,7 @@ export default function LogsApp({
       <section className="log-view">
         <header className="app-head">
           <div className="app-title">
+            <span className="app-icon" aria-hidden="true"><ScrollText size={16} strokeWidth={1.75} /></span>
             <h1>{picked || "logs"}</h1>
             <p>{status}</p>
           </div>
@@ -176,6 +177,7 @@ export default function LogsApp({
         >
           {shown.length === 0 ? (
             <Empty
+              icon={needle.trim() ? <SearchX size={18} strokeWidth={1.75} /> : <Radio size={18} strokeWidth={1.75} />}
               title={needle.trim() ? "no line matches" : "waiting for output"}
               note={needle.trim()
                 ? `${lines.length} lines buffered, none containing "${needle.trim()}".`
