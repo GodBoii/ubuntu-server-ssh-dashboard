@@ -1,3 +1,4 @@
+import { ServerCog } from "lucide-react";
 import { Lamp, State } from "../components/kit";
 import { formatDuration } from "../lib/format";
 import type { ServiceInfo } from "../types";
@@ -17,6 +18,7 @@ export default function ServicesApp({ services }: { services: ServiceInfo[] }) {
     <div className="app">
       <header className="app-head">
         <div className="app-title">
+          <span className="app-icon" aria-hidden="true"><ServerCog size={16} strokeWidth={1.75} /></span>
           <h1>Services</h1>
           <p>{active}/{services.length} active · read only</p>
         </div>
