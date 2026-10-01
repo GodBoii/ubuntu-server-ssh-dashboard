@@ -1,8 +1,32 @@
-import { Copy, Keyboard, RefreshCw, ScrollText, Search, TriangleAlert, X } from "lucide-react";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  Boxes,
+  Clock,
+  Cloud,
+  Copy,
+  Cpu,
+  FolderTree,
+  Gauge,
+  History,
+  Keyboard,
+  Laptop,
+  MemoryStick,
+  Network,
+  RefreshCw,
+  ScrollText,
+  Search,
+  Server,
+  ServerCog,
+  SquareTerminal,
+  TriangleAlert,
+  Unplug,
+  X,
+  type LucideIcon,
+} from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api } from "./api";
 import { CommandPalette, type PaletteCommand } from "./components/CommandPalette";
 import { ConfirmDialog, type ConfirmRequest } from "./components/ConfirmDialog";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Act, Btn, Busy, Label, Lamp, Skeleton, Spec, State, useSlidingMarker } from "./components/kit";
 import { ShortcutsDialog, type ShortcutGroup } from "./components/ShortcutsDialog";
 import { Toasts } from "./components/Toasts";
@@ -10,31 +34,38 @@ import { Trace } from "./components/Trace";
 import { useHostLink, type HostLink } from "./hooks/useHostLink";
 import { useToasts } from "./hooks/useToasts";
 import { formatBytes, formatClock, formatDuration, formatLatency, formatPercent, formatRelativeTime } from "./lib/format";
+import { lazySection } from "./lib/lazy";
 import { containerHealth, containerStatusLabel, seriesOf, summarize } from "./lib/telemetry";
 import OverviewApp from "./apps/OverviewApp";
 import type { AppId, ContainerInfo, StackInfo } from "./types";
 
-const ActivityApp = lazy(() => import("./apps/ActivityApp"));
-const ContainersApp = lazy(() => import("./apps/ContainersApp"));
-const FilesApp = lazy(() => import("./apps/FilesApp"));
-const LogsApp = lazy(() => import("./apps/LogsApp"));
-const ServicesApp = lazy(() => import("./apps/ServicesApp"));
-const TerminalApp = lazy(() => import("./apps/TerminalApp"));
+const sections = {
+  activity: lazySection(() => import("./apps/ActivityApp")),
+  containers: lazySection(() => import("./apps/ContainersApp")),
+  files: lazySection(() => import("./apps/FilesApp")),
+  logs: lazySection(() => import("./apps/LogsApp")),
+  services: lazySection(() => import("./apps/ServicesApp")),
+  terminal: lazySection(() => import("./apps/TerminalApp")),
+};
 
-type Entry = { id: AppId; name: string; purpose: string };
+const ActivityApp = sections.activity.Component;
+const ContainersApp = sections.containers.Component;
+const FilesApp = sections.files.Component;
+const LogsApp = sections.logs.Component;
+const ServicesApp = sections.services.Component;
+const TerminalApp = sections.terminal.Component;
 
-/**
- * The index is numbered rather than iconified: the number is also the Alt
- * shortcut, so the ornament and the affordance are the same thing.
- */
+type Entry = { id: AppId; name: string; purpose: string; icon: LucideIcon };
+
+/** The number beside each entry is also its Alt shortcut. */
 const entries: Entry[] = [
-  { id: "overview", name: "Machine", purpose: "Vitals, compose stacks and busiest processes" },
-  { id: "containers", name: "Containers", purpose: "Inspect, start, stop and restart workloads" },
-  { id: "logs", name: "Logs", purpose: "Follow live output from any container" },
-  { id: "terminal", name: "Terminal", purpose: "Interactive shell on the Ubuntu host" },
-  { id: "files", name: "Files", purpose: "Browse and edit files under /home/arun/apps" },
-  { id: "services", name: "Services", purpose: "systemd state for ssh, docker and cloudflared" },
-  { id: "activity", name: "Activity", purpose: "Local ledger of every action taken here" },
+  { id: "overview", name: "Machine", purpose: "Vitals, compose stacks and busiest processes", icon: Gauge },
+  { id: "containers", name: "Containers", purpose: "Inspect, start, stop and restart workloads", icon: Boxes },
+  { id: "logs", name: "Logs", purpose: "Follow live output from any container", icon: ScrollText },
+  { id: "terminal", name: "Terminal", purpose: "Interactive shell on the Ubuntu host", icon: SquareTerminal },
+  { id: "files", name: "Files", purpose: "Browse and edit files under /home/arun/apps", icon: FolderTree },
+  { id: "services", name: "Services", purpose: "systemd state for ssh, docker and cloudflared", icon: ServerCog },
+  { id: "activity", name: "Activity", purpose: "Local ledger of every action taken here", icon: History },
 ];
 
 const numberOf = (id: AppId) => String(entries.findIndex((entry) => entry.id === id) + 1).padStart(2, "0");
@@ -79,21 +110,27 @@ const lampForHop = { ok: "ok", wait: "live", warn: "warn", down: "fail" } as con
 function LinkPath({ link, host, latencyMs }: { link: HostLink; host: string; latencyMs: number | null }) {
   const [laptop, tunnel, remote] = hopStates(link);
   const hops = [
-    { key: "laptop", title: "controller", note: "127.0.0.1:3000", state: laptop },
-    { key: "tunnel", title: "cloudflare", note: "access + tunnel", state: tunnel },
-    { key: "host", title: host, note: latencyMs === null ? "runs as arun" : `${formatLatency(latencyMs)} round trip`, state: remote },
+    { key: "laptop", title: "controller", note: "127.0.0.1:3000", state: laptop, icon: Laptop },
+    { key: "tunnel", title: "cloudflare", note: "access + tunnel", state: tunnel, icon: Cloud },
+    { key: "host", title: host, note: latencyMs === null ? "runs as arun" : `${formatLatency(latencyMs)} round trip`, state: remote, icon: Server },
   ];
   return (
     <div className="hops">
-      {hops.map((hop) => (
-        <div className="hop" key={hop.key}>
-          <Lamp level={lampForHop[hop.state]} />
-          <span className="hop-copy">
-            <b>{hop.title}</b>
-            <span>{hop.note}</span>
-          </span>
-        </div>
-      ))}
+      {hops.map((hop) => {
+        const Icon = hop.icon;
+        return (
+          <div className={`hop ${hop.state}`} key={hop.key}>
+            <span className="hop-node" aria-hidden="true">
+              <Icon size={12} strokeWidth={1.75} />
+            </span>
+            <span className="hop-copy">
+              <b>{hop.title}</b>
+              <span>{hop.note}</span>
+            </span>
+            <Lamp level={lampForHop[hop.state]} />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -110,6 +147,20 @@ export default function App() {
   const { link, overview, telemetry, audit, token, latencyMs, refreshing, paused, refresh, refreshAudit } = useHostLink();
   const { toasts, notify, dismiss } = useToasts();
   const { listRef, offset } = useSlidingMarker(active);
+  const hasOverview = overview !== null;
+
+  // Fetch every section chunk while the page is fresh, so a later rebuild or
+  // an expired Access session cannot break navigation mid-session.
+  useEffect(() => {
+    if (!hasOverview) return;
+    const warm = () => Object.values(sections).forEach((section) => section.preload());
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(warm, { timeout: 4_000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = window.setTimeout(warm, 1_500);
+    return () => window.clearTimeout(timer);
+  }, [hasOverview]);
 
   const copy = useCallback(async (value: string, what: string) => {
     try {
@@ -373,12 +424,7 @@ export default function App() {
 
       <header className="header">
         <div className="header-id">
-          <svg className="mark" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-            <path d="M4.4 1.5H1.5v15h2.9M13.6 1.5h2.9v15h-2.9" fill="none" stroke="currentColor" strokeWidth="1.4" />
-            <rect x="6.6" y="5" width="4.8" height="1.5" fill="currentColor" />
-            <rect x="6.6" y="8.25" width="4.8" height="1.5" fill="currentColor" />
-            <rect x="6.6" y="11.5" width="2.6" height="1.5" fill="currentColor" />
-          </svg>
+          <BrandMark live={link.kind === "live"} />
           <span className="header-name">
             <b>{overview?.host ?? "arun-H110"}</b>
             <span>
@@ -391,31 +437,33 @@ export default function App() {
 
         <div className="header-trace">
           <span className="trace-readout">
-            <b>
+            <span className="label"><Cpu size={11} strokeWidth={2} aria-hidden="true" /> cpu</span>
+            <b key={cpuNow === null ? "none" : Math.round(cpuNow)} className="tick-in">
               {cpuNow === null ? "—" : formatPercent(cpuNow)}
-              <em>cpu</em>
             </b>
-            <span className="label">{telemetry.length} samples</span>
+            <span className="trace-samples">{telemetry.length} samples</span>
           </span>
           <Trace series={cpuSeries} ceiling={100} label="Processor load" />
         </div>
 
         <div className="header-tools">
-          <span className="link-state">
+          <span className={`link-state ${link.kind}`} role="status">
             <Lamp level={link.kind === "live" ? "ok" : link.kind === "connecting" ? "live" : link.kind === "degraded" ? "warn" : "fail"} />
             <span>{link.kind === "live" ? "linked" : link.kind === "degraded" ? "stale" : link.kind === "offline" ? "no link" : "linking"}</span>
             <em>{formatLatency(latencyMs)}</em>
           </span>
-          <Btn variant="quiet" icon={<Search size={13} />} onClick={() => setPaletteOpen(true)}>
-            find <kbd>Ctrl K</kbd>
-          </Btn>
+          <button type="button" className="finder" onClick={() => setPaletteOpen(true)}>
+            <Search size={13} aria-hidden="true" />
+            <span>Search or run</span>
+            <kbd>Ctrl K</kbd>
+          </button>
           <Act
             label={paused ? "Polling is paused while this tab is hidden" : "Resample the host"}
-            icon={<RefreshCw size={13} />}
+            icon={<RefreshCw size={14} className={refreshing ? "spin" : undefined} />}
             disabled={refreshing}
             onClick={() => void refresh({ force: true })}
           />
-          <Act label="Keyboard shortcuts" icon={<Keyboard size={13} />} onClick={() => setKeysOpen(true)} />
+          <Act label="Keyboard shortcuts" icon={<Keyboard size={14} />} onClick={() => setKeysOpen(true)} />
         </div>
       </header>
 
@@ -423,20 +471,30 @@ export default function App() {
         <nav className="index" aria-label="Sections">
           <div className="index-list" ref={listRef}>
             <span className="index-marker" style={{ transform: `translateY(${offset}px)` }} aria-hidden="true" />
-            {entries.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className="index-item"
-                aria-label={entry.name}
-                aria-current={active === entry.id ? "page" : undefined}
-                onClick={() => setActive(entry.id)}
-              >
-                <span className="index-num">{numberOf(entry.id)}</span>
-                <span className="index-name">{entry.name}</span>
-                <span className="index-count">{counts[entry.id] ?? ""}</span>
-              </button>
-            ))}
+            {entries.map((entry) => {
+              const Icon = entry.icon;
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  className="index-item"
+                  aria-label={entry.name}
+                  aria-current={active === entry.id ? "page" : undefined}
+                  title={`${entry.name} · Alt ${numberOf(entry.id).slice(1)}`}
+                  onClick={() => setActive(entry.id)}
+                  onPointerEnter={() => {
+                    if (entry.id !== "overview") sections[entry.id].preload();
+                  }}
+                >
+                  <span className="index-icon" aria-hidden="true">
+                    <Icon size={15} strokeWidth={1.75} />
+                  </span>
+                  <span className="index-name">{entry.name}</span>
+                  <span className="index-count">{counts[entry.id] ?? ""}</span>
+                  <span className="index-num" aria-hidden="true">{numberOf(entry.id).slice(1)}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="index-section">
@@ -445,33 +503,40 @@ export default function App() {
           </div>
 
           <p className="index-foot">
-            bound to 127.0.0.1 only
-            <br />
-            no inbound port on the host
+            <Network size={11} strokeWidth={1.75} aria-hidden="true" />
+            <span>
+              bound to 127.0.0.1 only
+              <br />
+              no inbound port on the host
+            </span>
           </p>
         </nav>
 
         <main className="content" id="work" aria-label={entries.find((entry) => entry.id === active)?.name}>
           {link.kind === "degraded" && (
             <div className="banner" role="status">
-              <TriangleAlert size={14} aria-hidden="true" />
+              <TriangleAlert size={15} aria-hidden="true" />
               <p>
                 <b>Showing the last good reading.</b> {link.message} Sampled {formatRelativeTime(link.sampledAt)}.
               </p>
               <button type="button" className="link" onClick={() => void refresh({ force: true })}>retry</button>
             </div>
           )}
+          {/* Keyed by section: each visit mounts fresh, plays the entrance,
+              and clears any error the previous section raised. */}
           <div className="content-body" key={active}>
-            <Suspense fallback={<Busy label={`opening ${entries.find((entry) => entry.id === active)?.name.toLowerCase()}`} />}>
-              {body}
-            </Suspense>
+            <ErrorBoundary scope={entries.find((entry) => entry.id === active)?.name ?? "This section"} resetKey={active}>
+              <Suspense fallback={<Busy label={`opening ${entries.find((entry) => entry.id === active)?.name.toLowerCase()}`} />}>
+                {body}
+              </Suspense>
+            </ErrorBoundary>
           </div>
         </main>
 
         {showInspector && selectedContainer && (
           <aside className="inspector" aria-label={`Detail for ${selectedContainer.name}`}>
             <div className="inspector-head">
-              <Label>Container</Label>
+              <Label><Boxes size={11} aria-hidden="true" /> Container</Label>
               <span className="acts">
                 <Act label="Copy name" icon={<Copy size={13} />} onClick={() => void copy(selectedContainer.name, "container name")} />
                 <Act label="Close detail" icon={<X size={13} />} onClick={() => setInspected(null)} />
@@ -515,12 +580,12 @@ export default function App() {
       </div>
 
       <footer className="status-bar">
-        <span>protocol <b>{overview?.protocol ?? "—"}</b></span>
-        <span>poll <b>{paused ? "paused" : "8s"}</b></span>
-        <span>memory <b>{overview ? formatBytes(overview.memory.used) : <Skeleton width={40} />}</b></span>
-        <span>rtt <b>{formatLatency(latencyMs)}</b></span>
+        <span><Server size={11} aria-hidden="true" />protocol <b>{overview?.protocol ?? "—"}</b></span>
+        <span><RefreshCw size={11} aria-hidden="true" className={refreshing ? "spin" : undefined} />poll <b>{paused ? "paused" : "8s"}</b></span>
+        <span><MemoryStick size={11} aria-hidden="true" />memory <b>{overview ? formatBytes(overview.memory.used) : <Skeleton width={40} />}</b></span>
+        <span><Network size={11} aria-hidden="true" />rtt <b>{formatLatency(latencyMs)}</b></span>
         <span className="status-spacer" />
-        <span>last sample <b>{overview ? formatClock(overview.timestamp) : "—"}</b></span>
+        <span><Clock size={11} aria-hidden="true" />last sample <b>{overview ? formatClock(overview.timestamp) : "—"}</b></span>
         <span className="status-hint"><kbd>?</kbd> keys</span>
       </footer>
 
@@ -535,7 +600,15 @@ export default function App() {
 function Offline({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <div className="offline">
-      <h2>no link to the host</h2>
+      <span className="offline-art" aria-hidden="true">
+        <svg viewBox="0 0 120 120" width="88" height="88">
+          <circle className="ring ring-1" cx="60" cy="60" r="56" />
+          <circle className="ring ring-2" cx="60" cy="60" r="42" />
+          <circle className="ring ring-3" cx="60" cy="60" r="28" />
+        </svg>
+        <Unplug size={22} strokeWidth={1.75} />
+      </span>
+      <h2>No link to the host</h2>
       <p>{message}</p>
       <ol>
         <li>For the Windows controller, check <code>ssh -o BatchMode=yes ubuntu-server &quot;whoami&quot;</code> in PowerShell. On Ubuntu, check <code>systemctl --user status ubuntu-control</code>.</li>
@@ -544,5 +617,19 @@ function Offline({ message, onRetry }: { message: string; onRetry: () => void })
       </ol>
       <Btn variant="primary" icon={<RefreshCw size={13} />} onClick={onRetry}>Retry now</Btn>
     </div>
+  );
+}
+
+/** Bracketed host glyph. The bars fill in turn while the link is live. */
+function BrandMark({ live }: { live: boolean }) {
+  return (
+    <span className={`mark${live ? " live" : ""}`} aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 20 20">
+        <path d="M5 2H2v16h3M15 2h3v16h-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        <rect className="mark-bar" x="7" y="5.5" width="6" height="1.8" rx="0.9" />
+        <rect className="mark-bar" x="7" y="9.1" width="6" height="1.8" rx="0.9" />
+        <rect className="mark-bar" x="7" y="12.7" width="3.4" height="1.8" rx="0.9" />
+      </svg>
+    </span>
   );
 }
