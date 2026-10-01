@@ -57,6 +57,8 @@ const relativeUnits: Array<[Intl.RelativeTimeFormatUnit, number]> = [
 const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
 export function formatRelativeTime(timestamp: number, now = Date.now()): string {
+  // Intl throws a RangeError on NaN, and one bad timestamp must not take down a screen.
+  if (!Number.isFinite(timestamp)) return "-";
   const seconds = (timestamp - now) / 1000;
   let value = seconds;
   for (const [unit, step] of relativeUnits) {
@@ -76,9 +78,15 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 });
 const dayFormatter = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" });
 
-export const formatClock = (value: number | Date) => timeFormatter.format(value);
-export const formatTimestamp = (value: number | Date) => dateTimeFormatter.format(value);
-export const formatDay = (value: number | Date) => dayFormatter.format(value);
+/** `Intl.DateTimeFormat.format` throws on an invalid date, so every caller goes through this. */
+function safeFormat(formatter: Intl.DateTimeFormat, value: number | Date): string {
+  const time = value instanceof Date ? value.getTime() : value;
+  return Number.isFinite(time) ? formatter.format(time) : "-";
+}
+
+export const formatClock = (value: number | Date) => safeFormat(timeFormatter, value);
+export const formatTimestamp = (value: number | Date) => safeFormat(dateTimeFormatter, value);
+export const formatDay = (value: number | Date) => safeFormat(dayFormatter, value);
 
 /** Turns `container-restart` into `Container restart` for audit rows and dialogs. */
 export function humanize(value: string): string {
