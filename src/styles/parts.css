@@ -897,3 +897,7 @@
 .tip:hover > .tip-body, .tip:focus-within > .tip-body { visibility: visible; }
 .header-tools .tip > .tip-body { top: calc(100% + 10px); bottom: auto; left: auto; right: 0; transform: translateY(-3px); }
 .header-tools .tip:hover > .tip-body, .header-tools .tip:focus-within > .tip-body { transform: none; }
+/* Right-edge actions keep their hints inside the scrolling region. */
+.sheet .tip > .tip-body, .inspector .tip > .tip-body { left: auto; right: 0; transform: translateY(3px); }
+.sheet .tip:hover > .tip-body, .sheet .tip:focus-within > .tip-body,
+.inspector .tip:hover > .tip-body, .inspector .tip:focus-within > .tip-body { transform: none; }
