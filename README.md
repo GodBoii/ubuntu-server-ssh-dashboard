@@ -26,9 +26,9 @@ Nothing here opens an inbound port on Ubuntu. The HTTP server binds to `127.0.0.
 
 ## Design
 
-The interface is a dark console. The section index sits on the canvas, and the active section is a raised panel beside it. Hierarchy comes from type: mono for every piece of machine data, sans for prose and labels. Teal marks anything you can act on. Machine state uses three lamps (green, amber, red) that are always paired with a word, so colour is never the only signal.
+The interface uses black surfaces, neutral gray type and white controls. A numbered horizontal index keeps all seven sections within reach. The overview puts CPU utilization and its sampled history beside memory and disk readings, followed by compose stacks, processes and host details. Thin rules separate information without nested cards or glowing surfaces. Green, amber and red remain reserved for machine state and always appear with a label.
 
-A stepped CPU trace runs across the header. The Machine sheet shows processor, memory and disk as three tiles with a ring gauge and a bar each. Motion is short and respects `prefers-reduced-motion`.
+Motion is limited to short section changes, control feedback and asymmetric overlay transitions. Reduced-motion preferences disable movement. Container details remain available as a dismissible panel on smaller screens, and wide tables scroll within their section.
 
 Each section loads as its own chunk. Chunks are warmed in the background once the first reading arrives, a failed chunk load retries once and then reloads the page, and every section renders inside an error boundary, so a broken view shows a recovery panel instead of a black screen.
 
