@@ -149,6 +149,11 @@ export default function LogsApp({
             <p>{status}</p>
           </div>
           <div className="app-tools">
+            {containers.length > 0 && (
+              <span className="log-mobile-stream">
+                <Picker label="Log container" value={picked} onChange={setPicked} options={containers.map((container) => ({ value: container.name, label: container.name }))} />
+              </span>
+            )}
             <Field value={needle} onChange={setNeedle} label="Filter lines" placeholder="filter lines" icon={<Search size={13} />} />
             <Picker label="History depth" value={depth} onChange={setDepth} options={depths} />
             <div className="acts">
