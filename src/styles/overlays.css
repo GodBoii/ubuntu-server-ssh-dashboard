@@ -11,7 +11,7 @@
   inset: 0;
   z-index: var(--z-overlay);
   display: grid;
-  background: rgba(4, 7, 9, 0.62);
+  background: rgb(0 0 0 / 70%);
   backdrop-filter: blur(0px);
   opacity: 0;
   transition: opacity var(--t-fast) var(--ease-in), backdrop-filter var(--t-fast) var(--ease-in);
@@ -19,7 +19,7 @@
 
 .veil[data-open="true"] {
   opacity: 1;
-  backdrop-filter: blur(6px) saturate(120%);
+  backdrop-filter: blur(4px);
   transition: opacity var(--t-base) var(--ease-out), backdrop-filter var(--t-slow) var(--ease-out);
 }
 
@@ -38,17 +38,17 @@
   overflow: hidden;
   border: 1px solid var(--rule-hi);
   border-radius: var(--radius-lg);
-  background: linear-gradient(180deg, var(--ink-800), var(--ink-850));
+  background: var(--ink-850);
   box-shadow: var(--edge-light), var(--shadow-float);
   opacity: 0;
-  transform: translateY(8px) scale(0.97);
+  transform: translateY(4px) scale(0.98);
   transition: opacity var(--t-fast) var(--ease-in), transform var(--t-fast) var(--ease-in);
 }
 
 .sheet-surface[data-open="true"] {
   opacity: 1;
   transform: none;
-  transition: opacity var(--t-base) var(--ease-out), transform var(--t-slow) var(--ease-spring);
+  transition: opacity var(--t-base) var(--ease-out), transform var(--t-base) var(--ease-out);
 }
 
 .sheet-head {
@@ -69,7 +69,7 @@
 }
 
 .sheet-head h2::first-letter {
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 /* --------------------------------------------------------------- palette */
@@ -280,7 +280,6 @@
   font-family: var(--mono);
   font-size: var(--t-fine);
   line-height: 1.5;
-  animation: rise var(--t-slow) var(--ease-out) backwards;
 }
 
 .ask-effects li:nth-child(1) { animation-delay: 80ms; }
@@ -332,7 +331,7 @@
   font-size: var(--t-micro);
   font-weight: 600;
   letter-spacing: var(--track-label);
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .keys-body dl {
@@ -389,22 +388,22 @@
   overflow: hidden;
   border: 1px solid var(--rule-hi);
   border-radius: var(--radius-md);
-  background: rgba(17, 22, 26, 0.94);
+  background: var(--ink-800);
   backdrop-filter: blur(10px);
   box-shadow: var(--edge-light), var(--shadow-float);
   pointer-events: auto;
-  animation: toast-in var(--t-slow) var(--ease-spring);
+  animation: toast-in var(--t-slow) var(--ease-out);
   transition: opacity var(--t-base) var(--ease-in), transform var(--t-base) var(--ease-in);
 }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(24px) scale(0.96); }
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
 
 .toast[data-open="false"] {
   opacity: 0;
-  transform: translateX(16px) scale(0.98);
+  transform: translateY(4px);
 }
 
 .toast.ok { --tone: var(--lamp-ok); }
