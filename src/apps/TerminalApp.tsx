@@ -23,27 +23,27 @@ type Link = { kind: "connecting" } | { kind: "open" } | { kind: "closed"; messag
 
 /** Matches the console palette so the shell and the shell-inside-it agree. */
 const theme = {
-  background: "#100f0e",
-  foreground: "#d6d4cf",
-  cursor: "#4d9e90",
-  cursorAccent: "#100f0e",
-  selectionBackground: "rgba(77, 158, 144, 0.3)",
-  black: "#22211e",
+  background: "#080808",
+  foreground: "#ededed",
+  cursor: "#ededed",
+  cursorAccent: "#080808",
+  selectionBackground: "rgba(255, 255, 255, 0.2)",
+  black: "#262626",
   red: "#c9584c",
   green: "#7fa46a",
   yellow: "#cfa33e",
   blue: "#6f96b0",
   magenta: "#a887ae",
   cyan: "#4d9e90",
-  white: "#c8c6c1",
-  brightBlack: "#78756f",
+  white: "#d4d4d4",
+  brightBlack: "#929292",
   brightRed: "#d9746a",
   brightGreen: "#96b884",
   brightYellow: "#dcb257",
   brightBlue: "#8bafc6",
   brightMagenta: "#bf9fc4",
   brightCyan: "#63b3a5",
-  brightWhite: "#ecebe8",
+  brightWhite: "#ffffff",
 };
 
 const fontBounds = { min: 10, max: 20 };
