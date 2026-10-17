@@ -1,76 +1,48 @@
-/* ---------------------------------------------------------------------------
-   Design tokens
-
-   A dark operations console for one machine. The rules that hold it together:
-
-   1. One cool-neutral grey family. Surfaces step up in lightness as they get
-      closer to the operator: canvas, panel, raised, hover, selected.
-   2. Mono for every piece of machine data (names, numbers, paths, states,
-      times), sans for prose and labels.
-   3. Teal means "you can act on this": links, focus, primary actions, the
-      current section and the live trace. Machine state uses three lamps
-      (green, amber, red) that are always paired with a word.
-   --------------------------------------------------------------------------- */
-
+/* Black and neutral grays. Color is reserved for machine status. */
 :root {
   color-scheme: dark;
-
-  /* Cool-neutral greys, faintly tinted toward the accent so the teal reads
-     as part of the same light rather than a sticker on top. */
-  --ink-950: #07090b;   /* page canvas behind panels */
-  --ink-900: #0a0d10;   /* panel body */
-  --ink-850: #0d1114;   /* sunken: log surface, editor, inputs, table heads */
-  --ink-800: #11161a;   /* raised: header, sidebar, inspector */
-  --ink-750: #161c21;   /* hover */
-  --ink-700: #1b2228;   /* pressed, selected fill */
-  --ink-650: #222a31;   /* strong fill: tracks, tally off */
-
-  --rule: rgba(214, 232, 240, 0.07);     /* every structural line */
-  --rule-hi: rgba(214, 232, 240, 0.12);  /* focused input, table head, overlays */
-  --rule-glow: rgba(214, 232, 240, 0.18);
-
-  --paper: #e6ebee;     /* primary text          15.6:1 on panel */
-  --paper-2: #a4adb4;   /* secondary text         8.1:1 */
-  --paper-3: #7c868e;   /* micro labels           4.9:1 */
-  --paper-4: #4f5960;   /* gutters, disabled, decorative only */
-
-  /* Interaction. One hue. */
-  --signal: #3fb8a0;
-  --signal-hi: #66d3bd;
-  --signal-dim: rgba(63, 184, 160, 0.12);
-  --signal-soft: rgba(63, 184, 160, 0.2);
-  --signal-line: rgba(63, 184, 160, 0.36);
-  --signal-glow: rgba(63, 184, 160, 0.45);
-  --signal-ink: #03120e;
-
-  /* Machine state. */
-  --lamp-ok: #6fbf73;
-  --lamp-warn: #deae47;
-  --lamp-fail: #e0645a;
-  --lamp-idle: #4f5960;
-  --lamp-ok-dim: rgba(111, 191, 115, 0.16);
-  --lamp-warn-dim: rgba(222, 174, 71, 0.15);
-  --lamp-fail-dim: rgba(224, 100, 90, 0.16);
-  --text-warn: #e8c06a;
-  --text-fail: #ee8a80;
-
+  --ink-950: #080808;
+  --ink-900: #0c0c0c;
+  --ink-850: #111111;
+  --ink-800: #171717;
+  --ink-750: #1e1e1e;
+  --ink-700: #262626;
+  --ink-650: #333333;
+  --rule: #262626;
+  --rule-hi: #3c3c3c;
+  --rule-glow: #646464;
+  --paper: #ededed;
+  --paper-2: #b8b8b8;
+  --paper-3: #a0a0a0;
+  --paper-4: #929292;
+  --signal: #dedede;
+  --signal-hi: #ffffff;
+  --signal-dim: rgb(255 255 255 / 6%);
+  --signal-soft: rgb(255 255 255 / 16%);
+  --signal-line: rgb(255 255 255 / 35%);
+  --signal-glow: transparent;
+  --signal-ink: #111111;
+  --lamp-ok: #a4b99b;
+  --lamp-warn: #d4b878;
+  --lamp-fail: #db8d82;
+  --lamp-idle: #92928c;
+  --lamp-ok-dim: rgb(164 185 155 / 10%);
+  --lamp-warn-dim: rgb(212 184 120 / 10%);
+  --lamp-fail-dim: rgb(219 141 130 / 10%);
+  --text-warn: #dfc58f;
+  --text-fail: #e6a297;
   --sans: "Geist Variable", system-ui, "Segoe UI", sans-serif;
-  --mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", Consolas, monospace;
-
-  /* Type scale. Dense tool, small steps. */
-  --t-micro: 10px;
-  --t-fine: 11px;
-  --t-data: 12px;
-  --t-body: 13px;
-  --t-lead: 15px;
-  --t-title: 19px;
-  --t-figure: 26px;
-  --t-figure-lg: 38px;
-
-  --track-label: 0.12em;
-  --track-tight: -0.02em;
-
-  /* 4px grid. */
+  --mono: "Geist Mono Variable", ui-monospace, Consolas, monospace;
+  --t-micro: 11px;
+  --t-fine: 12px;
+  --t-data: 13px;
+  --t-body: 14px;
+  --t-lead: 16px;
+  --t-title: 30px;
+  --t-figure: 30px;
+  --t-figure-lg: 64px;
+  --track-label: 0.01em;
+  --track-tight: -0.045em;
   --s1: 4px;
   --s2: 8px;
   --s3: 12px;
@@ -78,28 +50,19 @@
   --s5: 24px;
   --s6: 32px;
   --s7: 48px;
-
-  /* Radius by level: controls are tight, panels are softer, overlays softest. */
-  --radius-xs: 4px;
-  --radius: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-pill: 999px;
-
-  /* Shadows carry the canvas hue instead of pure black. A single light
-     source from above: inner highlight on top, soft drop below. */
-  --edge-light: inset 0 1px 0 rgba(255, 255, 255, 0.035);
-  --shadow-panel: 0 1px 0 rgba(0, 0, 0, 0.35), 0 12px 32px -18px rgba(2, 10, 12, 0.85);
-  --shadow-float: 0 28px 70px -24px rgba(1, 8, 10, 0.9), 0 0 0 1px rgba(214, 232, 240, 0.06);
-  --shadow-pop: 0 10px 30px -12px rgba(1, 8, 10, 0.85);
-
-  /* Fixed shell dimensions. */
-  --h-header: 60px;
-  --h-status: 28px;
-  --w-index: 228px;
-  --w-inspector: 312px;
-  --gutter: 10px;
-
+  --radius-xs: 2px;
+  --radius: 4px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-pill: 4px;
+  --edge-light: inset 0 0 0 transparent;
+  --shadow-panel: 0 0 0 transparent;
+  --shadow-float: 0 16px 64px rgb(12 12 12 / 50%);
+  --shadow-pop: 0 4px 16px rgb(12 12 12 / 24%);
+  --h-header: 76px;
+  --h-status: 32px;
+  --w-inspector: 320px;
+  --gutter: 32px;
   --z-content: 1;
   --z-sticky: 10;
   --z-header: 20;
@@ -107,16 +70,13 @@
   --z-overlay: 60;
   --z-toast: 70;
   --z-grain: 80;
-
-  /* Motion. Short and settled: things arrive with a little presence and
-     leave faster than they came. */
-  --t-fast: 140ms;
-  --t-base: 220ms;
-  --t-slow: 360ms;
-  --t-page: 320ms;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --t-fast: 150ms;
+  --t-base: 250ms;
+  --t-slow: 400ms;
+  --t-page: 250ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-linear: linear;
 }
