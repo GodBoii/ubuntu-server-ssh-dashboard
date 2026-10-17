@@ -56,7 +56,7 @@
 @keyframes page-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-.banner { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; padding: 12px 16px; border-left: 2px solid var(--lamp-warn); background: var(--lamp-warn-dim); color: var(--text-warn); font-size: var(--t-fine); }
+.banner { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; padding: 12px 16px; border-left: 2px solid var(--lamp-warn); background: var(--ink-850); color: var(--text-warn); font-size: var(--t-fine); }
 .banner p { flex: 1; color: var(--paper-2); line-height: 1.6; }
 .banner b { color: var(--paper); font-weight: 500; }
 .inspector { display: flex; flex-direction: column; min-width: 0; min-height: 0; margin-top: var(--s5); overflow: auto; border-left: 1px solid var(--rule); background: var(--ink-900); animation: detail-in var(--t-base) var(--ease-out); }
