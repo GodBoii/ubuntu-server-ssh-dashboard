@@ -58,9 +58,12 @@ export function useHostLink(): HostLinkController {
   const pollCount = useRef(0);
   const mounted = useRef(true);
 
-  useEffect(() => () => {
-    mounted.current = false;
-    inFlight.current?.abort();
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      inFlight.current?.abort();
+    };
   }, []);
 
   const refreshAudit = useCallback(async () => {
@@ -85,7 +88,8 @@ export function useHostLink(): HostLinkController {
       const overview = await api.overview({ force, signal: controller.signal });
       if (!mounted.current) return;
       setLatencyMs(performance.now() - began);
-      setTelemetry((history) => appendTelemetry(history, deriveTelemetry(previousOverview.current, overview)));
+      const sample = deriveTelemetry(previousOverview.current, overview);
+      setTelemetry((history) => appendTelemetry(history, sample));
       previousOverview.current = overview;
       failures.current = 0;
       setLink({ kind: "live", overview, sampledAt: overview.timestamp });
